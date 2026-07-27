@@ -1,4 +1,4 @@
-# 🪙 德州扑克 GTO 训练器 (Texas Hold'em GTO Trainer)
+# 德扑 GTO 智能训练器
 
 > 一款基于 **博弈论最优解 (Game Theory Optimal, GTO)** 的德州扑克训练与复盘平台，帮助玩家通过 AI 对战、实时策略建议和数据分析，系统化提升扑克决策能力。
 
@@ -19,51 +19,6 @@
 - 📊 **数据统计与复盘**：追踪 VPIP、PFR、Aggression Factor 等核心指标，支持逐手回放分析
 - 💾 **本地数据持久化**：使用 IndexedDB (Dexie.js) 存储历史手牌与统计数据，无需后端
 - 🎨 **现代化 UI**：Tailwind CSS + Framer Motion 打造流畅的动画与响应式布局
-
----
-
-## 📸 应用截图
-
-<table>
-  <tr>
-    <td align="center">
-      <b>🏠 首页 · Home</b><br/>
-      <img src="https://placehold.co/600x360/1e293b/ffffff/png?text=%F0%9F%8F%A0+Home+Page%0A%0AGTO+Trainer+Landing" alt="Home Page" width="100%"/>
-      <sub>项目介绍、快速开始与最近对局入口</sub>
-    </td>
-    <td align="center">
-      <b>🎮 游戏对局 · Game Table</b><br/>
-      <img src="https://placehold.co/600x360/065f46/ffffff/png?text=%F0%9F%83%8F+Poker+Table%0A%0A9-Max+%7C+AI+Opponents" alt="Game Table" width="100%"/>
-      <sub>9-max 牌桌、玩家席位、公共牌与下注面板</sub>
-    </td>
-  </tr>
-  <tr>
-    <td align="center">
-      <b>📐 GTO 助手 · GTO Assistant</b><br/>
-      <img src="https://placehold.co/600x360/7c2d12/ffffff/png?text=%F0%9F%93%90+GTO+Assistant%0A%0AEV+%7C+Pot+Odds+%7C+Range" alt="GTO Assistant" width="100%"/>
-      <sub>实时策略建议、EV 计算与底池赔率分析</sub>
-    </td>
-    <td align="center">
-      <b>📊 复盘分析 · Analysis</b><br/>
-      <img src="https://placehold.co/600x360/1e3a8a/ffffff/png?text=%F0%9F%93%8A+Analysis%0A%0AVPIP+%7C+PFR+%7C+AF" alt="Analysis" width="100%"/>
-      <sub>VPIP / PFR / AF 等核心指标与手牌回放</sub>
-    </td>
-  </tr>
-  <tr>
-    <td align="center">
-      <b>⚙️ 游戏设置 · Settings</b><br/>
-      <img src="https://placehold.co/600x360/581c87/ffffff/png?text=%E2%9A%99%EF%B8%8F+Settings%0A%0APlayers+%7C+Blinds+%7C+AI" alt="Settings" width="100%"/>
-      <sub>玩家人数、盲注、初始筹码与 AI 难度配置</sub>
-    </td>
-    <td align="center">
-      <b>🃏 手牌评估 · Hand Evaluator</b><br/>
-      <img src="https://placehold.co/600x360/9f1239/ffffff/png?text=%F0%9F%83%8F+Hand+Evaluator%0A%0AFlush+%7C+Straight+%7C+Draws" alt="Hand Evaluator" width="100%"/>
-      <sub>牌型识别与听牌（Flush / Straight / Gutshot）检测</sub>
-    </td>
-  </tr>
-</table>
-
-> 💡 上图为界面示意占位图；正式截图可在运行 `npm start` 后自行截取替换。
 
 ---
 
