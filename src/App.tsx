@@ -54,7 +54,7 @@ function App() {
 
       {/* Header */}
       <header className="fixed top-0 left-0 right-0 z-50 border-b border-white/10 bg-[#050816]/70 backdrop-blur-xl">
-        <div className="container mx-auto flex items-center justify-between px-6 py-4">
+        <div className="container mx-auto flex items-center justify-between px-3 md:px-6 py-3 md:py-4">
           <div className="flex items-center gap-3">
             <div className="relative flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-cyan-400 via-sky-500 to-fuchsia-500 shadow-[0_0_24px_-4px_rgba(56,189,248,0.8)]">
               <span className="text-lg">🃏</span>
@@ -100,7 +100,7 @@ function App() {
       </header>
 
       {/* Main */}
-      <main className="relative z-10 flex min-h-screen flex-col items-center justify-center px-6 pb-16 pt-28">
+      <main className="relative z-10 flex min-h-screen flex-col items-center justify-center px-4 md:px-6 pb-16 pt-24 md:pt-28">
         {/* Hero */}
         <motion.div
           initial={{ opacity: 0, y: 24 }}
@@ -114,7 +114,7 @@ function App() {
             <span className="text-fuchsia-300">✨</span>
           </div>
 
-          <h2 className="mb-4 text-5xl font-extrabold leading-tight tracking-tight md:text-6xl">
+          <h2 className="mb-4 text-4xl font-extrabold leading-tight tracking-tight md:text-6xl">
             <span className="bg-gradient-to-r from-cyan-300 via-white to-fuchsia-300 bg-clip-text text-transparent">
               极致 GTO
             </span>
@@ -134,7 +134,7 @@ function App() {
         >
           {/* 发光边框 */}
           <div className="absolute -inset-[1px] rounded-3xl bg-gradient-to-r from-cyan-500/60 via-sky-500/40 to-fuchsia-500/60 opacity-70 blur-[2px]" />
-          <div className="relative overflow-hidden rounded-3xl border border-white/10 bg-[#0a0f1f]/80 p-8 backdrop-blur-xl">
+          <div className="relative overflow-hidden rounded-3xl border border-white/10 bg-[#0a0f1f]/80 p-5 md:p-8 backdrop-blur-xl">
             {/* 内部装饰点 */}
             <div className="pointer-events-none absolute right-6 top-6 flex gap-1.5">
               <span className="h-2 w-2 rounded-full bg-cyan-400/70 shadow-[0_0_8px_rgba(34,211,238,0.9)]" />

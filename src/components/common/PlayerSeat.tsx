@@ -83,9 +83,10 @@ export function PlayerSeat({
         animate={{ scale: 1, opacity: 1 }}
         transition={{ duration: 0.3 }}
       >
-        {/* 玩家信息卡片 - 复古仪表盘 */}
+        {/* 玩家信息卡片 - 复古仪表盘
+             手机端使用更窄的卡片尺寸，避免相邻座位重叠 */}
         <motion.div
-          className={`relative rounded-xl p-3 min-w-[160px] font-mono ${
+          className={`relative rounded-lg md:rounded-xl p-1.5 md:p-3 min-w-[92px] md:min-w-[160px] font-mono ${
             isFolded && !isWinner ? 'opacity-45 grayscale' : ''
           }`}
           style={cardStyle}
@@ -207,9 +208,9 @@ export function PlayerSeat({
           )}
 
           {/* 玩家头像 */}
-          <div className="flex items-center gap-2 mb-2">
+          <div className="flex items-center gap-1.5 md:gap-2 mb-1.5 md:mb-2">
             <div
-              className="relative w-12 h-12 rounded-lg flex items-center justify-center text-lg font-black border-2 shrink-0"
+              className="relative w-7 h-7 md:w-12 md:h-12 rounded-md md:rounded-lg flex items-center justify-center text-xs md:text-lg font-black border-2 shrink-0"
               style={
                 isWinner
                   ? {
@@ -237,7 +238,7 @@ export function PlayerSeat({
             </div>
             <div className="flex-1 min-w-0">
               <div
-                className="font-black text-sm truncate tracking-wide"
+                className="font-black text-[11px] md:text-sm truncate tracking-wide"
                 style={{
                   color: isWinner ? '#fbbf24' : isCurrentPlayer ? '#67e8f9' : isHuman ? '#e0f2fe' : '#fef3c7',
                   textShadow: isWinner
@@ -251,15 +252,15 @@ export function PlayerSeat({
               </div>
               {/* AI风格标签 或 牌型名 */}
               {isWinner && handName ? (
-                <div className="text-sm font-bold text-amber-400 mb-0.5 truncate tracking-wider">
+                <div className="text-[10px] md:text-sm font-bold text-amber-400 mb-0.5 truncate tracking-wider">
                   ★ {handName}
                 </div>
               ) : player.type === 'ai' && player.aiStyle ? (
-                <div className="text-sm text-amber-500/80 mb-0.5 font-semibold tracking-wider truncate">
+                <div className="text-[10px] md:text-sm text-amber-500/80 mb-0.5 font-semibold tracking-wider truncate">
                   {getStyleDisplayName(player.aiStyle)}
                 </div>
               ) : null}
-              <div className="flex items-center gap-1 text-base font-black text-amber-400">
+              <div className="flex items-center gap-0.5 md:gap-1 text-xs md:text-base font-black text-amber-400">
                 <span>🪙</span>
                 <span style={{ textShadow: '0 0 6px rgba(245,158,11,0.5)' }}>
                   {player.chips.toLocaleString()}
@@ -341,10 +342,11 @@ export function PlayerSeat({
           )}
         </motion.div>
 
-        {/* 玩家手牌 */}
+        {/* 玩家手牌
+             手机端手牌位置上提 -3.5rem，桌面端保持 -3.5rem（原值） */}
         {player.cards.length > 0 && (
           <div
-            className={`absolute -top-14 left-1/2 -translate-x-1/2 flex gap-1 ${
+            className={`absolute -top-9 md:-top-14 left-1/2 -translate-x-1/2 flex gap-0.5 md:gap-1 ${
               isFolded ? 'opacity-40 grayscale brightness-75' : ''
             }`}
           >

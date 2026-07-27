@@ -12,10 +12,12 @@ export function PokerTable({ gameState }: PokerTableProps) {
 
   // 计算玩家座位位置（椭圆排列）
   // 半径收窄：让座位更靠中心，手牌不会溢出到桌沿之外
+  // 手机端使用更小的半径，避免座位卡片相互重叠
   const getPlayerPosition = (index: number, total: number) => {
     const angle = (index * 360 / total) - 90;
-    const radiusX = 38;
-    const radiusY = 28;
+    const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+    const radiusX = isMobile ? 34 : 38;
+    const radiusY = isMobile ? 32 : 28;
     const x = 50 + radiusX * Math.cos(angle * Math.PI / 180);
     const y = 50 + radiusY * Math.sin(angle * Math.PI / 180);
     return { x, y };
@@ -35,9 +37,10 @@ export function PokerTable({ gameState }: PokerTableProps) {
   }));
 
   return (
-    <div className="relative w-full flex items-center justify-center py-6">
-      {/* 扑克桌容器 - 不裁切，让座位手牌可以溢出桌沿 */}
-      <div className="relative w-full aspect-[16/10]">
+    <div className="relative w-full flex items-center justify-center py-3 md:py-6">
+      {/* 扑克桌容器 - 不裁切，让座位手牌可以溢出桌沿
+           手机端使用更方的比例 (4:3)，桌面端保持 16:10 */}
+      <div className="relative w-full aspect-[4/3] md:aspect-[16/10]">
         {/* 外层扫描光晕 */}
         <div className="absolute -inset-8 -z-10 rounded-[5rem] bg-gradient-to-br from-amber-500/15 via-cyan-500/10 to-amber-500/15 blur-3xl" />
 

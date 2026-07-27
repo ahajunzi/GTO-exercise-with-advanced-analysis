@@ -127,22 +127,22 @@ export function ActionPanel({ player, availableActions, minRaise, maxBet, pot, o
 
   return (
     <motion.div
-      className="w-full rounded-xl border border-amber-500/25 bg-background-dark/70 backdrop-blur-md px-4 py-2.5"
+      className="w-full rounded-xl border border-amber-500/25 bg-background-dark/70 backdrop-blur-md px-3 md:px-4 py-2 md:py-2.5"
       initial={{ y: 12, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
       transition={{ duration: 0.25 }}
     >
       {!showRaiseSlider ? (
-        <div className="flex items-center justify-between gap-3">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2 md:gap-3">
           {/* 左侧：玩家筹码/下注 - 紧凑单行 */}
-          <div className="flex items-center gap-3 text-sm text-text-muted whitespace-nowrap font-mono">
+          <div className="flex items-center gap-3 text-xs md:text-sm text-text-muted whitespace-nowrap font-mono">
             <span>筹码 <span className="text-warning font-bold">${player.chips}</span></span>
             <span className="opacity-40">|</span>
             <span>下注 <span className="text-primary font-bold">${player.bet}</span></span>
           </div>
 
           {/* 右侧：动作按钮 */}
-          <div className="flex items-center gap-2 flex-wrap justify-end">
+          <div className="flex items-center gap-1.5 md:gap-2 flex-wrap justify-end">
             {availableActions.map(action => (
               <div key={action}>{getActionButton(action)}</div>
             ))}
@@ -150,7 +150,7 @@ export function ActionPanel({ player, availableActions, minRaise, maxBet, pot, o
         </div>
       ) : (
         <motion.div
-          className="flex items-center gap-4"
+          className="flex flex-col md:flex-row md:items-center gap-3 md:gap-4"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
         >
@@ -231,8 +231,8 @@ export function ActionPanel({ player, availableActions, minRaise, maxBet, pot, o
             `}</style>
           </div>
 
-          {/* 快捷金额按钮 - 放大 3 倍 */}
-          <div className="flex gap-2">
+          {/* 快捷金额按钮 + 取消/确认 - 手机端换行 */}
+          <div className="flex gap-1.5 md:gap-2 flex-wrap justify-end">
             {[
               { label: '1/2底', value: calcPotBet(0.5) },
               { label: '底池', value: calcPotBet(1.0) },
@@ -241,7 +241,7 @@ export function ActionPanel({ player, availableActions, minRaise, maxBet, pot, o
               <button
                 key={label}
                 onClick={() => setRaiseAmount(value)}
-                className="px-4 py-2 min-w-[64px] text-sm font-bold font-mono rounded-md transition-all hover:scale-105"
+                className="px-2 md:px-4 py-1.5 md:py-2 min-w-[54px] md:min-w-[64px] text-xs md:text-sm font-bold font-mono rounded-md transition-all hover:scale-105"
                 style={{
                   background: 'linear-gradient(180deg, #14243d, #0a1a30)',
                   border: '1.5px solid rgba(245,158,11,0.5)',
@@ -254,27 +254,27 @@ export function ActionPanel({ player, availableActions, minRaise, maxBet, pot, o
                 {label}
               </button>
             ))}
-          </div>
 
-          {/* 取消/确认 - 放大 */}
-          <motion.button
-            variants={buttonVariants}
-            whileHover="hover"
-            whileTap="tap"
-            onClick={() => setShowRaiseSlider(false)}
-            className="px-4 py-2 bg-gradient-to-r from-gray-600 to-gray-700 rounded-md font-bold text-sm shadow-md"
-          >
-            取消
-          </motion.button>
-          <motion.button
-            variants={buttonVariants}
-            whileHover="hover"
-            whileTap="tap"
-            onClick={handleRaise}
-            className="px-5 py-2 bg-gradient-to-r from-warning to-amber-600 rounded-md font-bold text-sm shadow-md hover:shadow-warning/50 whitespace-nowrap"
-          >
-            确认 ${raiseAmount}
-          </motion.button>
+            {/* 取消/确认 - 手机端与快捷按钮同行换行 */}
+            <motion.button
+              variants={buttonVariants}
+              whileHover="hover"
+              whileTap="tap"
+              onClick={() => setShowRaiseSlider(false)}
+              className="px-3 md:px-4 py-1.5 md:py-2 bg-gradient-to-r from-gray-600 to-gray-700 rounded-md font-bold text-xs md:text-sm shadow-md"
+            >
+              取消
+            </motion.button>
+            <motion.button
+              variants={buttonVariants}
+              whileHover="hover"
+              whileTap="tap"
+              onClick={handleRaise}
+              className="px-3 md:px-5 py-1.5 md:py-2 bg-gradient-to-r from-warning to-amber-600 rounded-md font-bold text-xs md:text-sm shadow-md hover:shadow-warning/50 whitespace-nowrap"
+            >
+              确认 ${raiseAmount}
+            </motion.button>
+          </div>
         </motion.div>
       )}
     </motion.div>

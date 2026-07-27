@@ -216,17 +216,17 @@ export function GamePage({ onBack }: GamePageProps) {
     <div className="min-h-screen bg-gradient-to-br from-background-darker via-background-dark to-background">
       {/* 顶部工具栏 */}
       <header className="fixed top-0 left-0 right-0 z-50 bg-background-dark/80 backdrop-blur-md border-b border-white/10">
-        <div className="container mx-auto px-6 py-3 flex items-center justify-between">
+        <div className="container mx-auto px-2 md:px-6 py-2 md:py-3 flex items-center justify-between gap-2">
           <button 
             onClick={onBack}
-            className="flex items-center gap-2 px-4 py-2 hover:bg-white/10 rounded-lg transition-colors"
+            className="flex items-center gap-1 md:gap-2 px-2 md:px-4 py-1.5 md:py-2 hover:bg-white/10 rounded-lg transition-colors text-sm md:text-base flex-shrink-0"
           >
             <span>⬅️</span>
-            <span>返回大厅</span>
+            <span className="hidden sm:inline">返回大厅</span>
           </button>
 
-          <div className="flex items-center gap-4">
-            <div className="text-sm text-text-muted">
+          <div className="flex items-center gap-2 md:gap-4">
+            <div className="text-xs md:text-sm text-text-muted hidden sm:block">
               小盲/大盲: <span className="text-warning font-semibold">${gameState.smallBlind}/${gameState.bigBlind}</span>
             </div>
 
@@ -234,44 +234,45 @@ export function GamePage({ onBack }: GamePageProps) {
             <div className="flex items-center gap-1 bg-white/5 rounded-lg p-1 border border-white/10">
               <button
                 onClick={() => setAiSpeedMode('fast')}
-                className={`px-3 py-1.5 rounded-md text-sm font-semibold transition-all ${
+                className={`px-2 md:px-3 py-1 md:py-1.5 rounded-md text-xs md:text-sm font-semibold transition-all ${
                   aiSpeedMode === 'fast'
                     ? 'bg-primary text-white shadow'
                     : 'text-text-muted hover:text-white'
                 }`}
                 title="AI 快速决策（默认）"
               >
-                ⚡ 快速
+                ⚡<span className="hidden md:inline"> 快速</span>
               </button>
               <button
                 onClick={() => setAiSpeedMode('slow')}
-                className={`px-3 py-1.5 rounded-md text-sm font-semibold transition-all ${
+                className={`px-2 md:px-3 py-1 md:py-1.5 rounded-md text-xs md:text-sm font-semibold transition-all ${
                   aiSpeedMode === 'slow'
                     ? 'bg-primary text-white shadow'
                     : 'text-text-muted hover:text-white'
                 }`}
                 title="AI 每步等待 3 秒，便于观察"
               >
-                🐢 慢速
+                🐢<span className="hidden md:inline"> 慢速</span>
               </button>
             </div>
 
-            <button className="p-2 hover:bg-white/10 rounded-lg transition-colors text-xl">
+            <button className="p-1.5 md:p-2 hover:bg-white/10 rounded-lg transition-colors text-lg md:text-xl hidden sm:block">
               ⚙️
             </button>
           </div>
         </div>
       </header>
 
-      {/* 主游戏区域 - 顶部对齐固定 padding，避免助手撑高容器导致牌桌相对下移 */}
-      <main className="pt-32 pb-9 px-4 flex justify-center">
-        <div className="w-full max-w-[1920px] flex gap-4 items-start justify-center">
-          {/* 左侧占位 - 与助手等宽，用于对称布局，保证牌桌视觉居中 */}
+      {/* 主游戏区域 - 顶部对齐固定 padding，避免助手撑高容器导致牌桌相对下移
+           手机端：单列纵向；桌面端：三栏布局保持不变 */}
+      <main className="pt-16 md:pt-32 pb-9 px-2 md:px-4 flex justify-center">
+        <div className="w-full max-w-[1920px] flex flex-col md:flex-row gap-3 md:gap-4 items-stretch md:items-start justify-center">
+          {/* 左侧占位 - 只在桌面端生效，保持牌桌视觉居中 */}
           {showGTOAssistant && humanPlayer && (
-            <div className="w-72 flex-shrink-0" aria-hidden="true" />
+            <div className="hidden md:block w-72 flex-shrink-0" aria-hidden="true" />
           )}
 
-          {/* 中间：牌桌 + 操作面板 - 固定基准宽度，两种模式下大小/位置一致 */}
+          {/* 中间：牌桌 + 操作面板 - 桌面端固定基准宽度 */}
           <div className="flex-shrink-0 w-full max-w-[1360px] flex flex-col gap-3">
             <PokerTable gameState={gameState} />
 
@@ -287,29 +288,60 @@ export function GamePage({ onBack }: GamePageProps) {
             )}
           </div>
 
-          {/* 右侧：GTO 助手 - 顶部对齐，独立滚动，不影响牌桌位置 */}
+          {/* 右侧：GTO 助手
+               - 桌面端：右侧固定栏，独立滚动
+               - 手机端：变成底部抽屉，覆盖显示，避免挤压牌桌
+          */}
           <AnimatePresence>
             {showGTOAssistant && humanPlayer && (
-              <motion.div
-                initial={{ x: 300, opacity: 0 }}
-                animate={{ x: 0, opacity: 1 }}
-                exit={{ x: 300, opacity: 0 }}
-                transition={{ duration: 0.3 }}
-                className="w-72 flex-shrink-0 max-h-[calc(100vh-8rem)] overflow-y-auto pr-1"
-              >
-                <GTOAssistant player={humanPlayer} gameState={gameState} />
-              </motion.div>
+              <>
+                {/* 桌面端：右侧栏 */}
+                <motion.div
+                  key="gto-desktop"
+                  initial={{ x: 300, opacity: 0 }}
+                  animate={{ x: 0, opacity: 1 }}
+                  exit={{ x: 300, opacity: 0 }}
+                  transition={{ duration: 0.3 }}
+                  className="hidden md:block w-72 flex-shrink-0 max-h-[calc(100vh-8rem)] overflow-y-auto pr-1"
+                >
+                  <GTOAssistant player={humanPlayer} gameState={gameState} />
+                </motion.div>
+
+                {/* 手机端：底部弹出抽屉 */}
+                <motion.div
+                  key="gto-mobile"
+                  initial={{ y: '100%' }}
+                  animate={{ y: 0 }}
+                  exit={{ y: '100%' }}
+                  transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+                  className="md:hidden fixed inset-x-0 bottom-0 top-16 z-40 bg-background-dark/95 backdrop-blur-lg border-t border-white/10 overflow-y-auto"
+                >
+                  <div className="p-3">
+                    <div className="flex items-center justify-between mb-2 sticky top-0 bg-background-dark/95 py-1 z-10">
+                      <span className="text-sm font-bold">🧠 GTO 助手</span>
+                      <button
+                        onClick={() => setShowGTOAssistant(false)}
+                        className="px-3 py-1 bg-white/10 rounded-md text-xs font-semibold"
+                      >
+                        关闭 ✕
+                      </button>
+                    </div>
+                    <GTOAssistant player={humanPlayer} gameState={gameState} />
+                  </div>
+                </motion.div>
+              </>
             )}
           </AnimatePresence>
         </div>
       </main>
 
-      {/* GTO助手切换按钮 */}
+      {/* GTO助手切换按钮：桌面在右上，手机在右下（避开顶栏和牌桌） */}
       <button
         onClick={() => setShowGTOAssistant(!showGTOAssistant)}
-        className="fixed right-4 top-20 z-40 px-4 py-2 bg-primary hover:bg-primary-600 rounded-lg shadow-lg transition-colors text-sm font-semibold"
+        className="fixed z-[60] px-3 md:px-4 py-2 bg-primary hover:bg-primary-600 rounded-lg shadow-lg transition-colors text-xs md:text-sm font-semibold
+                   right-2 md:right-4 bottom-20 md:bottom-auto md:top-20"
       >
-        {showGTOAssistant ? '隐藏助手' : '显示助手'}
+        {showGTOAssistant ? '🧠 隐藏助手' : '🧠 显示助手'}
       </button>
 
       {/* 结算后的继续按钮 */}
