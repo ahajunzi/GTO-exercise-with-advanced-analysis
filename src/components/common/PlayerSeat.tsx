@@ -162,7 +162,7 @@ export function PlayerSeat({
             <div className="absolute -top-2 -right-2 flex gap-1">
               {player.isDealer && (
                 <div
-                  className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-black text-amber-100 border-2"
+                  className="w-8 h-8 rounded-full flex items-center justify-center text-base font-black text-amber-100 border-2"
                   style={{
                     background: 'linear-gradient(180deg, #f59e0b, #92400e)',
                     borderColor: '#78350f',
@@ -174,7 +174,7 @@ export function PlayerSeat({
               )}
               {player.isSmallBlind && (
                 <div
-                  className="w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-black text-cyan-50 border-2"
+                  className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-black text-cyan-50 border-2"
                   style={{
                     background: 'linear-gradient(180deg, #22d3ee, #0e7490)',
                     borderColor: '#155e75',
@@ -186,7 +186,7 @@ export function PlayerSeat({
               )}
               {player.isBigBlind && (
                 <div
-                  className="w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-black text-red-50 border-2"
+                  className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-black text-red-50 border-2"
                   style={{
                     background: 'linear-gradient(180deg, #ef4444, #991b1b)',
                     borderColor: '#7f1d1d',
@@ -244,15 +244,15 @@ export function PlayerSeat({
               </div>
               {/* AI风格标签 或 牌型名 */}
               {isWinner && handName ? (
-                <div className="text-[10px] font-bold text-amber-400 mb-0.5 truncate tracking-wider">
+                <div className="text-sm font-bold text-amber-400 mb-0.5 truncate tracking-wider">
                   ★ {handName}
                 </div>
               ) : player.type === 'ai' && player.aiStyle ? (
-                <div className="text-[10px] text-amber-500/80 mb-0.5 font-semibold tracking-wider truncate">
+                <div className="text-sm text-amber-500/80 mb-0.5 font-semibold tracking-wider truncate">
                   {getStyleDisplayName(player.aiStyle)}
                 </div>
               ) : null}
-              <div className="flex items-center gap-1 text-xs font-black text-amber-400">
+              <div className="flex items-center gap-1 text-base font-black text-amber-400">
                 <span>🪙</span>
                 <span style={{ textShadow: '0 0 6px rgba(245,158,11,0.5)' }}>
                   {player.chips.toLocaleString()}
@@ -264,7 +264,7 @@ export function PlayerSeat({
           {/* 当前下注 - 复古 LED 标签 */}
           {!isWinner && player.bet > 0 && (
             <motion.div
-              className="absolute -bottom-8 left-1/2 -translate-x-1/2 whitespace-nowrap px-3 py-1 rounded-sm text-xs font-black font-mono tracking-wider"
+              className="absolute -bottom-9 left-1/2 -translate-x-1/2 whitespace-nowrap px-3 py-1 rounded-sm text-sm font-black font-mono tracking-wider"
               style={{
                 background: 'linear-gradient(180deg, #14243d, #08132a)',
                 color: '#fbbf24',
@@ -302,7 +302,7 @@ export function PlayerSeat({
           {/* All-in 标记 */}
           {isAllIn && !isWinner && (
             <motion.div
-              className="absolute -top-8 left-1/2 -translate-x-1/2 whitespace-nowrap px-3 py-1 rounded-sm text-xs font-black font-mono tracking-widest"
+              className="absolute -top-9 left-1/2 -translate-x-1/2 whitespace-nowrap px-3 py-1.5 rounded-sm text-sm font-black font-mono tracking-widest"
               style={{
                 background: 'linear-gradient(180deg, #ef4444, #7f1d1d)',
                 color: '#fef2f2',
@@ -321,7 +321,7 @@ export function PlayerSeat({
           {isFolded && (
             <div className="pointer-events-none absolute inset-0 flex items-center justify-center rounded-xl">
               <span
-                className="text-[10px] font-black font-mono tracking-widest px-2 py-0.5 rounded-sm"
+                className="text-sm font-black font-mono tracking-widest px-3 py-1 rounded-sm"
                 style={{
                   background: 'rgba(15,30,53,0.9)',
                   color: '#94a3b8',

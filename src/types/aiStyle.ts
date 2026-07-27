@@ -104,51 +104,17 @@ export const AI_STYLES: Record<AIStyle, AIStyleConfig> = {
 
 /**
  * 为AI玩家随机分配风格（保持多样性）
+ *
+ * AI 现在只有一个难度：expert（最强模式）——风格分布以松凶（LAG）和紧凶（TAG）为主，
+ * 偶尔出现紧弱（TAP），几乎不出现松弱（LAP）。
  */
-export function assignRandomStyle(difficulty: string): AIStyle {
-  // 根据难度调整风格分布
-  const styles: AIStyle[] = ['TAG', 'LAG', 'TAP', 'LAP'];
-  
-  switch (difficulty) {
-    case 'easy':
-      // 简单难度：更多松弱玩家
-      return weightedRandom([
-        { style: 'TAG', weight: 1 },
-        { style: 'LAG', weight: 2 },
-        { style: 'TAP', weight: 2 },
-        { style: 'LAP', weight: 5 }  // 50%概率（从4提升到5）
-      ]);
-      
-    case 'medium':
-      // 中等难度：偏松的平衡分布
-      return weightedRandom([
-        { style: 'TAG', weight: 2 },
-        { style: 'LAG', weight: 3 },  // 更多松凶
-        { style: 'TAP', weight: 2 },
-        { style: 'LAP', weight: 3 }   // 更多松弱
-      ]);
-      
-    case 'hard':
-      // 困难难度：平衡分布
-      return weightedRandom([
-        { style: 'TAG', weight: 3 },  // 减少紧凶
-        { style: 'LAG', weight: 4 },  // 增加松凶
-        { style: 'TAP', weight: 2 },
-        { style: 'LAP', weight: 1 }
-      ]);
-      
-    case 'expert':
-      // 专家难度：松凶和紧凶为主
-      return weightedRandom([
-        { style: 'TAG', weight: 4 },  // 减少
-        { style: 'LAG', weight: 5 },  // 增加松凶
-        { style: 'TAP', weight: 1 },
-        { style: 'LAP', weight: 0 }
-      ]);
-      
-    default:
-      return styles[Math.floor(Math.random() * styles.length)];
-  }
+export function assignRandomStyle(_difficulty: string): AIStyle {
+  return weightedRandom([
+    { style: 'TAG', weight: 4 },
+    { style: 'LAG', weight: 5 },
+    { style: 'TAP', weight: 1 },
+    { style: 'LAP', weight: 0 }
+  ]);
 }
 
 /**

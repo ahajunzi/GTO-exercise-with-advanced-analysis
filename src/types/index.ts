@@ -13,8 +13,8 @@ export interface Card {
 // 玩家类型
 export type PlayerType = 'human' | 'ai';
 
-// AI难度级别
-export type AIDifficulty = 'easy' | 'medium' | 'hard' | 'expert';
+// AI难度级别（只有一种：最强的 expert）
+export type AIDifficulty = 'expert';
 
 // 玩家动作类型
 export type ActionType = 'fold' | 'check' | 'call' | 'raise' | 'all-in';

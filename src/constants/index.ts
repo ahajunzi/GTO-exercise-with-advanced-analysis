@@ -34,7 +34,7 @@ export const DEFAULT_CONFIG = {
   startingChips: 1000,
   smallBlind: 5,
   bigBlind: 10,
-  aiDifficulty: 'medium' as const
+  aiDifficulty: 'expert' as const
 };
 
 // AI行动速度配置（毫秒）
@@ -48,26 +48,8 @@ export const AI_SPEED_CONFIG = {
 // 默认AI速度
 export const DEFAULT_AI_SPEED = AI_SPEED_CONFIG.fast;
 
-// AI难度配置
+// AI难度配置（已统一为 expert——AI 只保留最强模式）
 export const AI_DIFFICULTY_CONFIG = {
-  easy: {
-    bluffFrequency: 0.05,
-    foldToBluffFrequency: 0.7,
-    slowPlayFrequency: 0.1,
-    gtoAdherence: 0.3
-  },
-  medium: {
-    bluffFrequency: 0.15,
-    foldToBluffFrequency: 0.5,
-    slowPlayFrequency: 0.2,
-    gtoAdherence: 0.6
-  },
-  hard: {
-    bluffFrequency: 0.25,
-    foldToBluffFrequency: 0.3,
-    slowPlayFrequency: 0.3,
-    gtoAdherence: 0.85
-  },
   expert: {
     bluffFrequency: 0.3,
     foldToBluffFrequency: 0.2,

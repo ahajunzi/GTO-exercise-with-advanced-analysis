@@ -3,6 +3,7 @@ import { AI_DIFFICULTY_CONFIG } from '../../constants';
 import { evaluateHand } from '../../utils/handEvaluator';
 import { PreflopRanges, HandTier } from './PreflopRanges';
 import { AI_STYLES } from '../../types/aiStyle';
+import { opponentModel, OpponentProfile } from '../gto/OpponentModel';
 
 /**
  * 概率决策分布
@@ -123,8 +124,18 @@ export class AIEngine {
       potSize
     );
     
+    // 翻前对手剥削：接入对手画像调整
+    const exploitedMix = this.applyPreflopOpponentExploits(
+      mix,
+      player,
+      gameState,
+      tier,
+      facingRaise,
+      callAmount
+    );
+    
     // 难度控制：低难度玩家决策更随机（gtoAdherence 越低，越接近均匀分布）
-    const finalMix = this.applyDifficultyToMix(mix, config.gtoAdherence, tier);
+    const finalMix = this.applyDifficultyToMix(exploitedMix, config.gtoAdherence, tier);
     
     // 从分布中采样得到最终动作
     let action: ActionType = this.sampleAction(finalMix);
@@ -340,8 +351,20 @@ export class AIEngine {
       player.cards
     );
     
+    // ============================================================
+    // 剥削性调整：根据对手画像（>= 5 手观察）调整分布
+    // ============================================================
+    const exploitedMix = this.applyOpponentExploits(
+      mix,
+      player,
+      gameState,
+      analysis,
+      context,
+      callAmount
+    );
+    
     // 难度调整
-    const finalMix = this.applyDifficultyToMix(mix, config.gtoAdherence, Math.floor(analysis.equity * 5));
+    const finalMix = this.applyDifficultyToMix(exploitedMix, config.gtoAdherence, Math.floor(analysis.equity * 5));
     
     // 采样动作
     let action: ActionType = this.sampleAction(finalMix);
@@ -349,13 +372,18 @@ export class AIEngine {
     
     // 计算金额
     if (action === 'raise') {
+      // 判定当前加注是价值还是诈唬：equity < 0.5 且没成牌 → 诈唬定性
+      const isBluff = analysis.equity < 0.45 && analysis.madeHandStrength < 0.35;
       amount = this.calculateRaiseSize(
         analysis.equity,
         potSize,
         styleConfig.aggression,
         gameState.minRaise,
         player.chips,
-        callAmount
+        callAmount,
+        texture,
+        isBluff,
+        gameState.phase
       );
       
       if (amount >= player.chips) {
@@ -799,22 +827,23 @@ export class AIEngine {
     // 底池赔率保护：面对好赔率的跟注不应轻易弃牌
     // ============================================================
     if (callAmount > 0) {
-      // 当我方胜率 >= 底池赔率 * 1.1 时，绝不应弃牌
-      if (equity > potOdds * 1.1) {
-        mix.fold *= 0.3;
-        mix.call *= 1.4;
+      // 当我方胜率 >= 底池赔率 * 1.15 时，明显有利可图
+      if (equity > potOdds * 1.15) {
+        mix.fold *= 0.35;
+        mix.call *= 1.35;
+      } else if (equity < potOdds * 0.7) {
+        // 胜率远低于赔率 —— 明显亏损跟注，坚决弃
+        mix.fold *= 1.5;
+        mix.call *= 0.5;
       }
       // 极好的赔率（跟注很便宜）
       if (potOdds < 0.2) {
-        mix.fold *= 0.4;
-        mix.call *= 1.3;
-      } else if (potOdds < 0.33) {
-        mix.fold *= 0.7;
+        mix.fold *= 0.5;
       }
       
-      // 面对小 bet（相对于底池）尤其宽松
-      if (callAmount <= bigBlind * 2) {
-        mix.fold *= 0.5;
+      // 面对小 bet（相对于底池）但胜率也应至少能打
+      if (callAmount <= bigBlind * 2 && equity > 0.15) {
+        mix.fold *= 0.6;
       }
     } else {
       // 无需付出，永不弃牌
@@ -824,11 +853,12 @@ export class AIEngine {
     
     // ============================================================
     // 底池承诺保护：已投入较多筹码时，不应轻易弃牌
+    // 但同样要求 equity 起码不能太惨
     // ============================================================
-    if (potCommitment > 0.3) {
-      mix.fold *= 0.4;
-    } else if (potCommitment > 0.15) {
-      mix.fold *= 0.7;
+    if (potCommitment > 0.3 && equity > 0.2) {
+      mix.fold *= 0.5;
+    } else if (potCommitment > 0.15 && equity > 0.25) {
+      mix.fold *= 0.75;
     }
     
     // ============================================================
@@ -844,15 +874,19 @@ export class AIEngine {
     }
     
     // ============================================================
-    // 智能慢打（诱敌/陷阱）
-    // 强牌 + 干燥牌面 -> 慢打诱惑；湿润牌面 -> 直接价值下注保护
+    // 智能慢打（诱敌/陷阱）—— 基于纹理确定性判断，避免随机翻脸
+    // 强牌 + 干燥牌面 + 单挑 -> 高概率慢打；湿润牌面 -> 直接价值下注
     // ============================================================
     if (madeHandStrength > 0.8 && callAmount === 0) {
-      const slowPlayChance = style.slowPlayFrequency * 
-        (1.5 - texture.wetness) *  // 湿润牌面减少慢打
-        (context.numOpponents === 1 ? 1.3 : 0.8); // 单挑更适合慢打
-      if (Math.random() < slowPlayChance) {
-        // 转 raise -> check(call)
+      // 慢打得分：0-1，>0.5 才启用慢打
+      const slowPlayScore =
+        style.slowPlayFrequency *
+        (1.5 - texture.wetness) *      // 干燥牌面倾向慢打
+        (context.numOpponents === 1 ? 1.4 : 0.6); // 单挑更适合，多人场必须保护
+      
+      // 河牌不慢打（错过价值）
+      const canSlowPlay = phase !== 'river' && slowPlayScore > 0.5;
+      if (canSlowPlay) {
         mix.call += mix.raise * 0.7;
         mix.raise *= 0.3;
       }
@@ -902,12 +936,62 @@ export class AIEngine {
     }
     
     // ============================================================
-    // River 阶段：没有听牌，牌力决定一切
+    // River GTO 平衡：诈唬-价值-弃防对称
     // ============================================================
     if (phase === 'river') {
-      if (equity < 0.25) {
-        // 河牌弱牌，除非诈唬否则应该弃/过
-        mix.raise *= 0.5;
+      if (callAmount > 0) {
+        // ---- 面对下注：GTO 最小防守频率 MDF = 1 - α ----
+        // α = bet/(pot+bet)，我方为了不被剥削，call 概率至少 MDF
+        // 但同时也要考虑自身牌力
+        const alpha = potOdds; // 恰好等于底池赔率的 α
+        const mdf = 1 - alpha; // 最小防守频率
+        
+        if (equity >= 0.7) {
+          // 强牌：几乎不弃，甚至考虑加注收更多价值（thin value / raise-for-value）
+          mix.fold = 0;
+          mix.call = Math.max(mix.call, 0.75);
+          // 面对小注可以加价值
+          if (context.betSizeRatio < 0.6 && equity >= 0.8) {
+            mix.raise = Math.max(mix.raise, 0.25);
+          }
+        } else if (equity >= 0.45) {
+          // 中等牌 —— 典型 bluff-catch 区，按 MDF 决定 call
+          mix.call = Math.max(mix.call, mdf * 0.9);
+          mix.fold = Math.min(mix.fold, 1 - mdf * 0.9);
+          mix.raise = 0; // 不要用中等牌加注 —— 会被更强的牌 3-bet
+        } else if (equity >= 0.25) {
+          // 边缘牌：只有小注时才 bluff-catch
+          if (alpha < 0.4) {
+            // 对方下注小 (< 40% pot)，我方 pot odds 好
+            mix.call = Math.max(mix.call, 0.4);
+            mix.fold = Math.min(mix.fold, 0.6);
+          } else {
+            mix.call *= 0.5;
+            mix.fold = Math.max(mix.fold, 0.7);
+          }
+          mix.raise = 0;
+        } else {
+          // 河牌垃圾牌面对下注：几乎必弃，除非有阻断牌 + 极小注
+          mix.raise *= 0.3; // 保留一点点 3-bet 诈唬空间
+          mix.call *= 0.2;
+          mix.fold = Math.max(mix.fold, 0.85);
+        }
+      } else {
+        // ---- 无人下注：河牌下注决策 ----
+        if (equity >= 0.7) {
+          // 强牌：价值下注（更薄一档）
+          mix.raise = Math.max(mix.raise, 0.7);
+          mix.call = 1 - mix.raise; // check-behind 也可
+        } else if (equity >= 0.45) {
+          // 中等牌：check 为主，避免被 check-raise
+          mix.raise *= 0.4;
+          mix.call = Math.max(mix.call, 0.7);
+        } else if (equity < 0.25) {
+          // 河牌垃圾牌：只有 bluffScore 特别高才诈唬（已由 bluff 系统处理）
+          // 这里限制随机诈唬冲动
+          mix.raise = Math.min(mix.raise, 0.25);
+          mix.call = Math.max(mix.call, 0.75);
+        }
       }
     }
     
@@ -923,7 +1007,14 @@ export class AIEngine {
   }
 
   /**
-   * 计算加注大小（基于牌力和风格）
+   * 计算加注大小（基于牌力 + 牌面纹理 + SPR + 街阶段）
+   *
+   * 经典 GTO 尺度参考：
+   * - 干燥牌面 (wetness < 0.25): 33-50% pot（阻塞下注 / 小额诈唬）
+   * - 中等牌面: 50-66%
+   * - 湿润牌面 (wetness > 0.5): 66-100%（保护 + 收听牌费）
+   * - 极值牌型（坚果 / 深筹）: 偶尔 overbet 到 125%
+   * - SPR 低（<3）时：更倾向直接 all-in 或大注（承诺）
    */
   private static calculateRaiseSize(
     equity: number,
@@ -931,29 +1022,73 @@ export class AIEngine {
     aggression: number,
     minRaise: number,
     playerChips: number,
-    callAmount: number
+    callAmount: number,
+    texture?: BoardTexture,
+    isBluff: boolean = false,
+    phase: string = 'flop'
   ): number {
-    // 基础加注比例：牌越强下注越大
+    const wetness = texture?.wetness ?? 0.3;
+    const effectivePot = potSize + callAmount;
+    
+    // 基础 pot 比例
     let potFraction: number;
-    if (equity >= 0.75) {
-      potFraction = 0.75 + Math.random() * 0.5; // 0.75-1.25 pot
-    } else if (equity >= 0.55) {
-      potFraction = 0.55 + Math.random() * 0.3; // 0.55-0.85
-    } else if (equity >= 0.35) {
-      potFraction = 0.4 + Math.random() * 0.25; // 0.4-0.65
+    
+    if (isBluff) {
+      // 诈唬：干燥牌面小注、湿润牌面大注（不同的诈唬逻辑）
+      if (wetness < 0.3) {
+        potFraction = 0.4;  // 干燥牌面 33-50%，成本低
+      } else if (wetness > 0.6) {
+        potFraction = 0.75; // 湿润牌面必须大注否则被听牌打
+      } else {
+        potFraction = 0.6;
+      }
+    } else if (equity >= 0.85) {
+      // 坚果牌：湿润牌面 overbet 保护+收更多价值，干燥牌面小注钓鱼
+      if (wetness > 0.5) {
+        potFraction = 1.0;
+      } else if (wetness > 0.25) {
+        potFraction = 0.75;
+      } else {
+        potFraction = 0.55;
+      }
+    } else if (equity >= 0.65) {
+      // 强价值牌：中大注收保护费
+      if (wetness > 0.5) {
+        potFraction = 0.8;
+      } else if (wetness > 0.25) {
+        potFraction = 0.66;
+      } else {
+        potFraction = 0.5;
+      }
+    } else if (equity >= 0.45) {
+      // 中等牌：更小的下注控制底池
+      if (wetness > 0.5) {
+        potFraction = 0.6;
+      } else {
+        potFraction = 0.4;
+      }
     } else {
-      // 诈唬：较小或较大 sizing
-      potFraction = 0.5 + Math.random() * 0.3;
+      // 弱牌加注只可能是诈唬/半诈唬
+      potFraction = wetness > 0.5 ? 0.66 : 0.5;
     }
     
-    // 攻击性乘数
-    const aggMultiplier = 0.75 + (aggression / 3) * 0.5; // 0.75-1.25
+    // 攻击性乘数（LAG 加大、TAP 缩小），但限制在合理区间
+    const aggMultiplier = 0.9 + (aggression / 3) * 0.25; // 0.9-1.15
     potFraction *= aggMultiplier;
     
-    const effectivePot = potSize + callAmount;
+    // 河牌：不再有听牌威胁，价值下注可以更薄
+    if (phase === 'river' && !isBluff && equity >= 0.6 && equity < 0.85) {
+      potFraction *= 0.85;
+    }
+    
     let raiseAmount = Math.round(effectivePot * potFraction) + callAmount;
     
-    // 限制
+    // SPR 保护：如果加注后剩余筹码很少，直接 all-in 更好
+    const remainingAfterRaise = playerChips - raiseAmount;
+    if (remainingAfterRaise > 0 && remainingAfterRaise < potSize * 0.5) {
+      raiseAmount = playerChips;
+    }
+    
     raiseAmount = Math.max(raiseAmount, minRaise);
     raiseAmount = Math.min(raiseAmount, playerChips);
     
@@ -986,30 +1121,221 @@ export class AIEngine {
   }
 
   /**
-   * 应用难度对分布的影响
-   * gtoAdherence 越高，越接近原分布；越低，越接近均匀噪声分布
+   * 翻前剥削性调整：根据对手画像调整 3-bet / cold-call / fold 频率
+   *
+   * - 面对 nit（vpip 极低）的加注 → 更多弃，只 3-bet 极强牌
+   * - 面对 maniac（vpip 极高、aggression 极高）的加注 → 用更宽的范围 3-bet 反击
+   * - 面对 fold-to-3bet 高的对手 → 疯狂 3-bet 诈唬
+   * - 面对 calling-station 的加注 → 不诈唬 3-bet，只价值 3-bet
    */
-  private static applyDifficultyToMix(mix: ActionMix, gtoAdherence: number, tierOrEquity: number): ActionMix {
-    // 均匀噪声分布（每个动作 1/3）
-    const noise: ActionMix = { fold: 0.33, call: 0.34, raise: 0.33 };
-    
-    // 但极端牌力时噪声也应偏向合理动作
-    // 强牌噪声偏向 call/raise，弱牌噪声偏向 fold/call
-    if (tierOrEquity >= 4) {
-      noise.fold = 0.05;
-      noise.call = 0.45;
-      noise.raise = 0.50;
-    } else if (tierOrEquity <= 0) {
-      noise.fold = 0.55;
-      noise.call = 0.35;
-      noise.raise = 0.10;
+  private static applyPreflopOpponentExploits(
+    mix: ActionMix,
+    player: Player,
+    gameState: GameState,
+    tier: HandTier,
+    facingRaise: boolean,
+    callAmount: number
+  ): ActionMix {
+    // 找到本手 preflop 加注者作为剥削目标
+    let target: OpponentProfile | null = null;
+    if (facingRaise) {
+      const currentActions = gameState.currentActions || [];
+      for (let i = currentActions.length - 1; i >= 0; i--) {
+        const a = currentActions[i];
+        if (a.phase !== 'preflop') continue;
+        if (a.playerId !== player.id && (a.action.type === 'raise' || a.action.type === 'all-in')) {
+          target = opponentModel.getProfile(a.playerId);
+          break;
+        }
+      }
+    } else {
+      // 未面对加注 —— 看下游玩家最"松"的那位，决定是否要 iso-raise
+      for (const p of gameState.players) {
+        if (p.id === player.id) continue;
+        const prof = opponentModel.getProfile(p.id);
+        if (!target || prof.vpip > target.vpip) target = prof;
+      }
     }
     
-    const w = gtoAdherence;
+    if (!target || target.handsObserved < 5) return mix;
+    
+    const out: ActionMix = { ...mix };
+    
+    // ---- 面对加注时的剥削 ----
+    if (facingRaise && callAmount > 0) {
+      // 1. 对方是 nit → 加注 = 强牌，只有 PREMIUM 才应对
+      if (target.style === 'nit' || target.vpip < 0.18) {
+        if (tier < HandTier.PREMIUM) {
+          out.fold *= 1.5;
+          out.raise *= 0.4;
+          out.call *= 0.7;
+        }
+      }
+      
+      // 2. 对方是 maniac / 极松 → 用更宽范围 3-bet call
+      if (target.style === 'maniac' || target.vpip > 0.4) {
+        if (tier >= HandTier.GOOD) {
+          out.fold *= 0.3;
+          out.call *= 1.3;
+          out.raise *= 1.4;
+        } else if (tier >= HandTier.PLAYABLE) {
+          out.fold *= 0.6;
+          out.call *= 1.2;
+        }
+      }
+      
+      // 3. 对方 fold-to-3bet 高 → 我方 light 3-bet 诈唬
+      if (target.foldToThreeBet > 0.65 && tier <= HandTier.PLAYABLE) {
+        // 用弱牌 3-bet 诈唬，直接偷底池
+        out.raise += 0.25;
+        out.fold *= 0.6;
+      }
+      
+      // 4. 对方 calling-station → 只价值 3-bet，从不诈唬
+      if (target.style === 'calling-station' || target.wtsd > 0.45) {
+        if (tier < HandTier.STRONG) {
+          out.raise *= 0.3;
+          out.call += mix.raise * 0.5;
+        }
+        // 强牌加大价值 raise
+        if (tier >= HandTier.STRONG) {
+          out.raise *= 1.3;
+        }
+      }
+    }
+    
+    return this.normalizeMix(out);
+  }
+
+  /**
+   * 剥削性调整 —— 根据对手历史画像调整决策
+   *
+   * 核心思路：
+   * - 面对 fold-to-cbet 高的对手 → 疯狂 c-bet 诈唬
+   * - 面对 calling-station（wtsd 高）→ 减少诈唬，只做价值
+   * - 面对 nit（vpip 极低）→ 尊重其下注，弱牌坚决弃
+   * - 面对 maniac（aggression > 3）→ 加大 bluff-catch，更多 call
+   *
+   * 只有当画像 handsObserved >= 5 时才启用剥削（避免样本不足）
+   */
+  private static applyOpponentExploits(
+    mix: ActionMix,
+    player: Player,
+    gameState: GameState,
+    analysis: { equity: number; madeHandStrength: number },
+    context: HandContext,
+    callAmount: number
+  ): ActionMix {
+    // 找出主要对手 = 上一个下注/加注者，或最近一个人类玩家
+    const opponents = gameState.players.filter(
+      p => p.id !== player.id && (p.status === 'active' || p.status === 'waiting' || p.status === 'all-in')
+    );
+    if (opponents.length === 0) return mix;
+    
+    // 优先看：如果面对下注，剥削下注者；否则看下游玩家（可能的抵抗者）
+    let target: OpponentProfile | null = null;
+    if (context.facedBetThisStreet) {
+      // 找上一次下注者
+      const lastActions = gameState.currentActions || [];
+      for (let i = lastActions.length - 1; i >= 0; i--) {
+        const a = lastActions[i];
+        if (a.playerId !== player.id && (a.action.type === 'raise' || a.action.type === 'all-in')) {
+          target = opponentModel.getProfile(a.playerId);
+          break;
+        }
+      }
+    }
+    // 兜底：用剩余对手中样本最多的
+    if (!target) {
+      for (const p of opponents) {
+        const prof = opponentModel.getProfile(p.id);
+        if (!target || prof.handsObserved > target.handsObserved) {
+          target = prof;
+        }
+      }
+    }
+    
+    if (!target || target.handsObserved < 5) return mix;
+    
+    const out: ActionMix = { ...mix };
+    
+    // ---- 1. calling-station / high wtsd：不要诈唬，只做价值 ----
+    if (target.style === 'calling-station' || target.wtsd > 0.45) {
+      // 弱牌加注要压低（诈唬无效）
+      if (analysis.equity < 0.5) {
+        out.raise *= 0.4;
+        out.call += mix.raise * 0.4;
+      }
+      // 强牌 raise 提升（value bet 更能被叫）
+      if (analysis.equity >= 0.65) {
+        out.raise *= 1.25;
+      }
+    }
+    
+    // ---- 2. nit / 极紧对手：尊重其下注 ----
+    if ((target.style === 'nit' || target.vpip < 0.18) && context.facedBetThisStreet) {
+      // nit 下注几乎都是强牌，边缘牌应该弃
+      if (analysis.equity < 0.55) {
+        out.fold *= 1.6;
+        out.call *= 0.7;
+        out.raise *= 0.5;
+      }
+    }
+    
+    // ---- 3. maniac / 高攻击性对手：加大 bluff-catch ----
+    if ((target.style === 'maniac' || target.aggression > 3) && context.facedBetThisStreet) {
+      // 因为对方诈唬多，我们的中等牌值得跟
+      if (analysis.equity >= 0.3 && analysis.equity < 0.65) {
+        out.fold *= 0.5;
+        out.call *= 1.35;
+      }
+      // 但不主动加注对抗（会被 3-bet）
+      if (analysis.equity < 0.7) {
+        out.raise *= 0.75;
+      }
+    }
+    
+    // ---- 4. 高 fold-to-cbet 对手：疯狂 c-bet 诈唬 ----
+    if (
+      context.amIPreflopAggressor &&
+      gameState.phase === 'flop' &&
+      context.everyoneCheckedToMe &&
+      target.foldToCbet > 0.55
+    ) {
+      // 显著提升 c-bet 频率，即使弱牌
+      out.raise += 0.35;
+      out.call *= 0.5; // 减少 check-back
+    }
+    
+    // ---- 5. 高 fold-to-3bet 对手：多在翻前 3-bet（此处只影响 postflop 继续加注）----
+    if (target.foldToThreeBet > 0.65 && analysis.equity < 0.4 && callAmount === 0) {
+      // 对方翻前打不住，翻后接着开火同样有效
+      out.raise += 0.15;
+    }
+    
+    return this.normalizeMix(out);
+  }
+
+  /**
+   * 应用难度对分布的影响 —— 使用温度采样，而不是掺入均匀噪声
+   *
+   * 高难度（gtoAdherence 接近 1.0）：分布锐化 → 更倾向于选最优动作，行为一致
+   * 低难度（gtoAdherence 接近 0.5）：分布平滑 → 保持随机性但仍偏向合理选项
+   *
+   * 关键：不再有"33% 均匀分布"的噪声污染，即使新手 AI 也不会在强牌乱弃或垃圾牌乱冲。
+   */
+  private static applyDifficultyToMix(mix: ActionMix, gtoAdherence: number, _tierOrEquity: number): ActionMix {
+    // temperature ∈ [0.5, 2.0]：越低分布越锐化（越确定），越高越平滑
+    // gtoAdherence 1.0 → temp 0.55（几乎总选最优）
+    // gtoAdherence 0.7 → temp 1.0（原分布，正常采样）
+    // gtoAdherence 0.5 → temp 1.5（平滑，更随机但仍合理）
+    const temperature = Math.max(0.5, 2.0 - gtoAdherence * 1.5);
+    
+    const pow = (v: number) => Math.pow(Math.max(v, 1e-6), 1 / temperature);
     return this.normalizeMix({
-      fold: mix.fold * w + noise.fold * (1 - w),
-      call: mix.call * w + noise.call * (1 - w),
-      raise: mix.raise * w + noise.raise * (1 - w)
+      fold: pow(mix.fold),
+      call: pow(mix.call),
+      raise: pow(mix.raise)
     });
   }
 

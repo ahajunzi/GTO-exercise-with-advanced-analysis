@@ -134,16 +134,16 @@ export function PokerTable({ gameState }: PokerTableProps) {
               }}
             />
             {/* 四方位刻度标签（复古仪表） */}
-            <span className="absolute -top-3 left-1/2 -translate-x-1/2 px-2 text-[10px] font-mono font-bold tracking-widest text-amber-400/80 bg-[#0f1e35]">
+            <span className="absolute -top-3 left-1/2 -translate-x-1/2 px-2 text-sm font-mono font-bold tracking-widest text-amber-400/80 bg-[#0f1e35]">
               ▲ N
             </span>
-            <span className="absolute -bottom-3 left-1/2 -translate-x-1/2 px-2 text-[10px] font-mono font-bold tracking-widest text-amber-400/80 bg-[#0f1e35]">
+            <span className="absolute -bottom-3 left-1/2 -translate-x-1/2 px-2 text-sm font-mono font-bold tracking-widest text-amber-400/80 bg-[#0f1e35]">
               ▼ S
             </span>
-            <span className="absolute top-1/2 -left-3 -translate-y-1/2 px-2 text-[10px] font-mono font-bold tracking-widest text-cyan-400/80 bg-[#0f1e35]">
+            <span className="absolute top-1/2 -left-3 -translate-y-1/2 px-2 text-sm font-mono font-bold tracking-widest text-cyan-400/80 bg-[#0f1e35]">
               ◀ W
             </span>
-            <span className="absolute top-1/2 -right-3 -translate-y-1/2 px-2 text-[10px] font-mono font-bold tracking-widest text-cyan-400/80 bg-[#0f1e35]">
+            <span className="absolute top-1/2 -right-3 -translate-y-1/2 px-2 text-sm font-mono font-bold tracking-widest text-cyan-400/80 bg-[#0f1e35]">
               E ▶
             </span>
           </div>
@@ -193,10 +193,10 @@ export function PokerTable({ gameState }: PokerTableProps) {
                   <div className="flex items-center gap-3 pr-4 border-r border-amber-500/30">
                     <div className="text-3xl">🏆</div>
                     <div>
-                      <div className="text-sm font-black text-amber-300 leading-tight tracking-wider font-mono">
+                      <div className="text-base font-black text-amber-300 leading-tight tracking-wider font-mono">
                         {winners.length > 1 ? 'SPLIT POT' : winners[0]?.player.name}
                       </div>
-                      <div className="text-xs text-amber-500 font-bold font-mono">
+                      <div className="text-sm text-amber-500 font-bold font-mono">
                         + ${totalWinnings.toLocaleString()}
                       </div>
                     </div>
@@ -208,17 +208,17 @@ export function PokerTable({ gameState }: PokerTableProps) {
                 {gameState.showdownResults.map((result) => (
                   <div
                     key={result.player.id}
-                    className={`flex flex-col items-center px-2.5 py-1 rounded-md min-w-[64px] font-mono ${
+                    className={`flex flex-col items-center px-3 py-1.5 rounded-md min-w-[80px] font-mono ${
                       result.isWinner
                         ? 'bg-amber-500/15 ring-1 ring-amber-400/60'
                         : 'bg-white/5 ring-1 ring-white/10'
                     }`}
                   >
-                    <span className="text-[10px] text-gray-300 truncate max-w-[54px]">
+                    <span className="text-xs text-gray-300 truncate max-w-[72px]">
                       {result.player.name}
                     </span>
                     <span
-                      className={`text-xs font-black ${
+                      className={`text-sm font-black ${
                         result.isWinner ? 'text-amber-400' : 'text-gray-500'
                       }`}
                     >
@@ -251,11 +251,11 @@ export function PokerTable({ gameState }: PokerTableProps) {
                 transition={{ duration: 1.5, repeat: Infinity }}
               />
               <div className="flex flex-col items-start leading-none gap-1">
-                <span className="text-[10px] text-cyan-400 uppercase tracking-[0.25em] font-mono font-bold">
+                <span className="text-sm text-cyan-400 uppercase tracking-[0.25em] font-mono font-bold">
                   POT
                 </span>
                 <span
-                  className="text-2xl font-black font-mono text-amber-300"
+                  className="text-3xl font-black font-mono text-amber-300"
                   style={{ textShadow: '0 0 12px rgba(245,158,11,0.7)' }}
                 >
                   ${totalPot.toLocaleString()}
@@ -300,7 +300,7 @@ export function PokerTable({ gameState }: PokerTableProps) {
           {/* 游戏阶段指示器 - 复古 LED 标签 */}
           {phase !== 'showdown' && board.length > 0 && (
             <motion.div
-              className="text-[11px] font-mono font-black tracking-[0.35em] px-4 py-1 rounded-sm text-amber-300"
+              className="text-sm font-mono font-black tracking-[0.35em] px-4 py-1.5 rounded-sm text-amber-300"
               style={{
                 background: 'linear-gradient(180deg, #14243d, #08132a)',
                 border: '1px solid rgba(245,158,11,0.5)',

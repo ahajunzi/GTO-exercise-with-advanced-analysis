@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { AIDifficulty, GameConfig } from '../../types';
+import { GameConfig } from '../../types';
 import { DEFAULT_CONFIG } from '../../constants';
 import { useGameStore } from '../../stores/gameStore';
 import { db } from '../../services/database';
@@ -183,48 +183,6 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
                   <span>$200</span>
                 </div>
               </div>
-            </div>
-          </motion.div>
-
-          {/* AI配置 */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-            className="bg-gradient-to-br from-background-dark to-background rounded-xl border border-white/10 p-6"
-          >
-            <div className="flex items-center gap-3 mb-6">
-              <span className="text-2xl">🤖</span>
-              <h2 className="text-xl font-bold">AI 难度</h2>
-            </div>
-
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              {(['easy', 'medium', 'hard', 'expert'] as AIDifficulty[]).map(difficulty => (
-                <button
-                  key={difficulty}
-                  onClick={() => updateConfig('aiDifficulty', difficulty)}
-                  className={`px-4 py-3 rounded-lg font-semibold transition-all ${
-                    config.aiDifficulty === difficulty
-                      ? 'bg-primary text-white shadow-lg shadow-primary/30'
-                      : 'bg-background hover:bg-background-dark border border-white/10'
-                  }`}
-                >
-                  {difficulty === 'easy' && '简单'}
-                  {difficulty === 'medium' && '中等'}
-                  {difficulty === 'hard' && '困难'}
-                  {difficulty === 'expert' && '专家'}
-                </button>
-              ))}
-            </div>
-
-            <div className="mt-4 p-4 bg-background/50 rounded-lg border border-white/5 text-sm">
-              <div className="font-semibold mb-2">难度说明:</div>
-              <ul className="space-y-1 text-text-muted">
-                <li>• 简单: AI策略基础，适合新手练习</li>
-                <li>• 中等: AI会使用一些进阶技巧</li>
-                <li>• 困难: AI接近真实玩家水平</li>
-                <li>• 专家: AI高度遵循GTO策略</li>
-              </ul>
             </div>
           </motion.div>
 

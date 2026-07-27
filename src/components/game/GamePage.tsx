@@ -176,6 +176,10 @@ export function GamePage({ onBack }: GamePageProps) {
 
   const isHumanTurn = currentPlayer?.type === 'human';
   const maxBet = Math.max(...gameState.players.map(p => p.bet), 0);
+  // 底池总额 = 已归入底池 + 本轮所有玩家的下注（用于计算按底池比例的加注）
+  const totalPot =
+    gameState.pots.reduce((sum, p) => sum + p.amount, 0) +
+    gameState.players.reduce((sum, p) => sum + p.bet, 0);
 
   const handleAction = (action: string, amount?: number) => {
     if (!humanPlayer || !isHumanTurn) return;
@@ -240,6 +244,7 @@ export function GamePage({ onBack }: GamePageProps) {
                 availableActions={availableActions}
                 minRaise={gameState.minRaise}
                 maxBet={maxBet}
+                pot={totalPot}
                 onAction={handleAction}
               />
             )}

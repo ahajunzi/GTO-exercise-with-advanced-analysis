@@ -8,10 +8,11 @@ interface ActionPanelProps {
   availableActions: ActionType[];
   minRaise: number;
   maxBet: number;
+  pot: number; // 当前底池总额（含本轮已下注），用于计算按底池比例的加注
   onAction: (action: ActionType, amount?: number) => void;
 }
 
-export function ActionPanel({ player, availableActions, minRaise, maxBet, onAction }: ActionPanelProps) {
+export function ActionPanel({ player, availableActions, minRaise, maxBet, pot, onAction }: ActionPanelProps) {
   const [raiseAmount, setRaiseAmount] = useState(minRaise);
   const [showRaiseSlider, setShowRaiseSlider] = useState(false);
 
@@ -30,6 +31,20 @@ export function ActionPanel({ player, availableActions, minRaise, maxBet, onActi
 
   const callAmount = maxBet - player.bet;
   const canCheck = player.bet === maxBet;
+
+  /**
+   * 计算按底池比例的 raise 金额
+   *
+   * GameEngine 中 raise 的 amount 语义 = 玩家本次共计投入的筹码（增量）
+   * 底池下注公式：总投入 = 跟注额 + fraction * (当前底池 + 跟注额)
+   * 也就是“先把跟注那部分归入底池，再按 fraction 追加”
+   */
+  const calcPotBet = (fraction: number) => {
+    const potAfterCall = pot + callAmount;
+    const target = callAmount + Math.floor(fraction * potAfterCall);
+    // 夹限到合法区间 [minRaise, player.chips]
+    return Math.max(minRaise, Math.min(target, player.chips));
+  };
 
   const buttonVariants = {
     hover: { scale: 1.04, y: -1 },
@@ -120,7 +135,7 @@ export function ActionPanel({ player, availableActions, minRaise, maxBet, onActi
       {!showRaiseSlider ? (
         <div className="flex items-center justify-between gap-3">
           {/* 左侧：玩家筹码/下注 - 紧凑单行 */}
-          <div className="flex items-center gap-3 text-xs text-text-muted whitespace-nowrap font-mono">
+          <div className="flex items-center gap-3 text-sm text-text-muted whitespace-nowrap font-mono">
             <span>筹码 <span className="text-warning font-bold">${player.chips}</span></span>
             <span className="opacity-40">|</span>
             <span>下注 <span className="text-primary font-bold">${player.bet}</span></span>
@@ -135,51 +150,119 @@ export function ActionPanel({ player, availableActions, minRaise, maxBet, onActi
         </div>
       ) : (
         <motion.div
-          className="flex items-center gap-3"
+          className="flex items-center gap-4"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
         >
-          {/* 加注金额显示 */}
-          <div className="flex items-center gap-2 whitespace-nowrap font-mono">
-            <span className="text-xs text-text-muted">加注</span>
-            <span className="text-lg font-black text-warning">${raiseAmount}</span>
+          {/* 加注金额显示 - 大号仪表读数 */}
+          <div className="flex flex-col items-start whitespace-nowrap font-mono leading-none">
+            <span className="text-sm text-cyan-400 uppercase tracking-[0.2em] font-bold">RAISE</span>
+            <span
+              className="text-3xl font-black text-amber-300 mt-1"
+              style={{ textShadow: '0 0 10px rgba(245,158,11,0.7)' }}
+            >
+              ${raiseAmount}
+            </span>
           </div>
 
-          {/* 滑块 - 占满剩余空间 */}
-          <input
-            type="range"
-            min={minRaise}
-            max={player.chips}
-            step={minRaise}
-            value={raiseAmount}
-            onChange={(e) => setRaiseAmount(parseInt(e.target.value))}
-            className="flex-1 h-2 bg-background-dark rounded-lg appearance-none cursor-pointer accent-warning"
-          />
+          {/* 滑块容器 - 复古仪表条：底槽 + 填充条 + 扫描线 + 原生 range 覆盖 */}
+          <div className="relative flex-1 h-8 flex items-center">
+            {/* 底部凹槽 */}
+            <div
+              className="absolute inset-x-0 top-1/2 -translate-y-1/2 h-4 rounded-sm overflow-hidden"
+              style={{
+                background: '#050e1f',
+                border: '1px solid rgba(255,255,255,0.1)',
+                boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.8)',
+              }}
+            >
+              {/* 填充条 */}
+              <div
+                className="h-full transition-all duration-100"
+                style={{
+                  width: `${((raiseAmount - minRaise) / Math.max(player.chips - minRaise, 1)) * 100}%`,
+                  background: 'linear-gradient(90deg, #f59e0b, #fbbf24, #f59e0b)',
+                  boxShadow: '0 0 12px rgba(245,158,11,0.7), inset 0 1px 0 rgba(255,255,255,0.35)',
+                }}
+              />
+              {/* CRT 扫描线 */}
+              <div
+                className="absolute inset-0 pointer-events-none"
+                style={{
+                  backgroundImage:
+                    'repeating-linear-gradient(90deg, rgba(0,0,0,0.35) 0px, rgba(0,0,0,0.35) 2px, transparent 2px, transparent 6px)',
+                }}
+              />
+            </div>
+            {/* 原生 range 输入 - 透明覆盖用于拖拽 */}
+            <input
+              type="range"
+              min={minRaise}
+              max={player.chips}
+              step={minRaise}
+              value={raiseAmount}
+              onChange={(e) => setRaiseAmount(parseInt(e.target.value))}
+              className="raise-slider absolute inset-0 w-full h-full cursor-pointer appearance-none bg-transparent"
+              style={{ WebkitAppearance: 'none' }}
+            />
+            <style>{`
+              .raise-slider::-webkit-slider-thumb {
+                -webkit-appearance: none;
+                width: 18px;
+                height: 26px;
+                border-radius: 3px;
+                background: linear-gradient(180deg, #fbbf24, #d97706);
+                border: 2px solid #451a03;
+                box-shadow: 0 0 12px rgba(245,158,11,0.9), inset 0 1px 0 rgba(255,255,255,0.5);
+                cursor: grab;
+              }
+              .raise-slider::-webkit-slider-thumb:active { cursor: grabbing; }
+              .raise-slider::-moz-range-thumb {
+                width: 18px;
+                height: 26px;
+                border-radius: 3px;
+                background: linear-gradient(180deg, #fbbf24, #d97706);
+                border: 2px solid #451a03;
+                box-shadow: 0 0 12px rgba(245,158,11,0.9);
+                cursor: grab;
+              }
+              .raise-slider::-webkit-slider-runnable-track { background: transparent; }
+              .raise-slider::-moz-range-track { background: transparent; }
+            `}</style>
+          </div>
 
-          {/* 快捷金额按钮 */}
-          <div className="flex gap-1">
+          {/* 快捷金额按钮 - 放大 3 倍 */}
+          <div className="flex gap-2">
             {[
-              { label: '1/2', value: Math.min(Math.floor(maxBet / 2), player.chips) },
-              { label: '池', value: Math.min(maxBet, player.chips) },
-              { label: 'All', value: player.chips },
+              { label: '1/2底', value: calcPotBet(0.5) },
+              { label: '底池', value: calcPotBet(1.0) },
+              { label: 'All-In', value: player.chips },
             ].map(({ label, value }) => (
               <button
                 key={label}
                 onClick={() => setRaiseAmount(value)}
-                className="px-2 py-1 bg-background-dark hover:bg-background text-xs rounded border border-white/10 hover:border-warning/50 transition-colors"
+                className="px-4 py-2 min-w-[64px] text-sm font-bold font-mono rounded-md transition-all hover:scale-105"
+                style={{
+                  background: 'linear-gradient(180deg, #14243d, #0a1a30)',
+                  border: '1.5px solid rgba(245,158,11,0.5)',
+                  color: '#fbbf24',
+                  boxShadow:
+                    '0 0 8px rgba(245,158,11,0.25), inset 0 1px 0 rgba(255,255,255,0.08)',
+                  textShadow: '0 0 6px rgba(245,158,11,0.5)',
+                }}
               >
                 {label}
               </button>
             ))}
           </div>
 
-          {/* 取消/确认 */}
+          {/* 取消/确认 - 放大 */}
           <motion.button
             variants={buttonVariants}
             whileHover="hover"
             whileTap="tap"
             onClick={() => setShowRaiseSlider(false)}
-            className="px-3 py-1.5 bg-gradient-to-r from-gray-600 to-gray-700 rounded-md font-semibold text-xs shadow-md"
+            className="px-4 py-2 bg-gradient-to-r from-gray-600 to-gray-700 rounded-md font-bold text-sm shadow-md"
           >
             取消
           </motion.button>
@@ -188,7 +271,7 @@ export function ActionPanel({ player, availableActions, minRaise, maxBet, onActi
             whileHover="hover"
             whileTap="tap"
             onClick={handleRaise}
-            className="px-3 py-1.5 bg-gradient-to-r from-warning to-amber-600 rounded-md font-semibold text-xs shadow-md hover:shadow-warning/50"
+            className="px-5 py-2 bg-gradient-to-r from-warning to-amber-600 rounded-md font-bold text-sm shadow-md hover:shadow-warning/50 whitespace-nowrap"
           >
             确认 ${raiseAmount}
           </motion.button>
