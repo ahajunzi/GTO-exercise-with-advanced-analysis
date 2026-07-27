@@ -32,13 +32,13 @@ export function ActionPanel({ player, availableActions, minRaise, maxBet, onActi
   const canCheck = player.bet === maxBet;
 
   const buttonVariants = {
-    hover: { scale: 1.05, y: -2 },
-    tap: { scale: 0.95 }
+    hover: { scale: 1.04, y: -1 },
+    tap: { scale: 0.96 }
   };
 
   const getActionButton = (action: ActionType) => {
-    const baseClass = "px-6 py-3 rounded-lg font-semibold text-sm transition-all shadow-lg";
-    
+    const baseClass = "px-5 py-2 rounded-md font-semibold text-sm transition-all shadow-md";
+
     switch (action) {
       case 'fold':
         return (
@@ -52,7 +52,7 @@ export function ActionPanel({ player, availableActions, minRaise, maxBet, onActi
             {ACTION_NAMES.fold}
           </motion.button>
         );
-      
+
       case 'check':
         return canCheck && (
           <motion.button
@@ -65,7 +65,7 @@ export function ActionPanel({ player, availableActions, minRaise, maxBet, onActi
             {ACTION_NAMES.check}
           </motion.button>
         );
-      
+
       case 'call':
         return !canCheck && (
           <motion.button
@@ -78,7 +78,7 @@ export function ActionPanel({ player, availableActions, minRaise, maxBet, onActi
             {ACTION_NAMES.call} ${callAmount}
           </motion.button>
         );
-      
+
       case 'raise':
         return (
           <motion.button
@@ -91,7 +91,7 @@ export function ActionPanel({ player, availableActions, minRaise, maxBet, onActi
             {ACTION_NAMES.raise}
           </motion.button>
         );
-      
+
       case 'all-in':
         return (
           <motion.button
@@ -99,12 +99,12 @@ export function ActionPanel({ player, availableActions, minRaise, maxBet, onActi
             whileHover="hover"
             whileTap="tap"
             onClick={() => handleAction('all-in')}
-            className={`${baseClass} bg-gradient-to-r from-purple-500 to-purple-600 hover:shadow-purple-500/50 border-2 border-purple-400`}
+            className={`${baseClass} bg-gradient-to-r from-purple-500 to-purple-600 hover:shadow-purple-500/50 border border-purple-400`}
           >
             {ACTION_NAMES['all-in']} ${player.chips}
           </motion.button>
         );
-      
+
       default:
         return null;
     }
@@ -112,97 +112,88 @@ export function ActionPanel({ player, availableActions, minRaise, maxBet, onActi
 
   return (
     <motion.div
-      className="fixed bottom-0 left-0 right-0 bg-gradient-to-t from-background-dark via-background-dark/95 to-transparent backdrop-blur-md border-t border-white/10 p-6"
-      initial={{ y: 100, opacity: 0 }}
+      className="w-full rounded-xl border border-amber-500/25 bg-background-dark/70 backdrop-blur-md px-4 py-2.5"
+      initial={{ y: 12, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
-      transition={{ duration: 0.3 }}
+      transition={{ duration: 0.25 }}
     >
-      <div className="container mx-auto max-w-4xl">
-        {!showRaiseSlider ? (
-          <div className="flex items-center justify-center gap-4">
+      {!showRaiseSlider ? (
+        <div className="flex items-center justify-between gap-3">
+          {/* 左侧：玩家筹码/下注 - 紧凑单行 */}
+          <div className="flex items-center gap-3 text-xs text-text-muted whitespace-nowrap font-mono">
+            <span>筹码 <span className="text-warning font-bold">${player.chips}</span></span>
+            <span className="opacity-40">|</span>
+            <span>下注 <span className="text-primary font-bold">${player.bet}</span></span>
+          </div>
+
+          {/* 右侧：动作按钮 */}
+          <div className="flex items-center gap-2 flex-wrap justify-end">
             {availableActions.map(action => (
-              <div key={action}>
-                {getActionButton(action)}
-              </div>
+              <div key={action}>{getActionButton(action)}</div>
             ))}
           </div>
-        ) : (
-          <motion.div
-            className="space-y-4"
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-          >
-            {/* 加注滑块 */}
-            <div className="bg-background rounded-lg p-4 border border-white/10">
-              <div className="flex items-center justify-between mb-3">
-                <span className="text-sm text-text-muted">加注金额</span>
-                <span className="text-2xl font-bold text-warning">${raiseAmount}</span>
-              </div>
-              
-              <input
-                type="range"
-                min={minRaise}
-                max={player.chips}
-                step={minRaise}
-                value={raiseAmount}
-                onChange={(e) => setRaiseAmount(parseInt(e.target.value))}
-                className="w-full h-2 bg-background-dark rounded-lg appearance-none cursor-pointer accent-warning"
-              />
-              
-              <div className="flex justify-between mt-2 text-xs text-text-muted">
-                <span>最小: ${minRaise}</span>
-                <span>最大: ${player.chips}</span>
-              </div>
-
-              {/* 快捷金额按钮 */}
-              <div className="flex gap-2 mt-4">
-                {[
-                  { label: '最小', value: minRaise },
-                  { label: '1/2池', value: Math.min(Math.floor(maxBet / 2), player.chips) },
-                  { label: '满池', value: Math.min(maxBet, player.chips) },
-                  { label: 'All-in', value: player.chips },
-                ].map(({ label, value }) => (
-                  <button
-                    key={label}
-                    onClick={() => setRaiseAmount(value)}
-                    className="flex-1 px-3 py-2 bg-background-dark hover:bg-background text-xs rounded border border-white/10 hover:border-warning/50 transition-colors"
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* 确认/取消按钮 */}
-            <div className="flex gap-4">
-              <motion.button
-                variants={buttonVariants}
-                whileHover="hover"
-                whileTap="tap"
-                onClick={() => setShowRaiseSlider(false)}
-                className="flex-1 px-6 py-3 bg-gradient-to-r from-gray-600 to-gray-700 rounded-lg font-semibold text-sm shadow-lg"
-              >
-                取消
-              </motion.button>
-              <motion.button
-                variants={buttonVariants}
-                whileHover="hover"
-                whileTap="tap"
-                onClick={handleRaise}
-                className="flex-1 px-6 py-3 bg-gradient-to-r from-warning to-amber-600 rounded-lg font-semibold text-sm shadow-lg hover:shadow-warning/50"
-              >
-                确认加注 ${raiseAmount}
-              </motion.button>
-            </div>
-          </motion.div>
-        )}
-
-        {/* 玩家信息 */}
-        <div className="mt-4 flex items-center justify-center gap-6 text-sm text-text-muted">
-          <div>筹码: <span className="text-warning font-semibold">${player.chips}</span></div>
-          <div>当前下注: <span className="text-primary font-semibold">${player.bet}</span></div>
         </div>
-      </div>
+      ) : (
+        <motion.div
+          className="flex items-center gap-3"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+        >
+          {/* 加注金额显示 */}
+          <div className="flex items-center gap-2 whitespace-nowrap font-mono">
+            <span className="text-xs text-text-muted">加注</span>
+            <span className="text-lg font-black text-warning">${raiseAmount}</span>
+          </div>
+
+          {/* 滑块 - 占满剩余空间 */}
+          <input
+            type="range"
+            min={minRaise}
+            max={player.chips}
+            step={minRaise}
+            value={raiseAmount}
+            onChange={(e) => setRaiseAmount(parseInt(e.target.value))}
+            className="flex-1 h-2 bg-background-dark rounded-lg appearance-none cursor-pointer accent-warning"
+          />
+
+          {/* 快捷金额按钮 */}
+          <div className="flex gap-1">
+            {[
+              { label: '1/2', value: Math.min(Math.floor(maxBet / 2), player.chips) },
+              { label: '池', value: Math.min(maxBet, player.chips) },
+              { label: 'All', value: player.chips },
+            ].map(({ label, value }) => (
+              <button
+                key={label}
+                onClick={() => setRaiseAmount(value)}
+                className="px-2 py-1 bg-background-dark hover:bg-background text-xs rounded border border-white/10 hover:border-warning/50 transition-colors"
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+
+          {/* 取消/确认 */}
+          <motion.button
+            variants={buttonVariants}
+            whileHover="hover"
+            whileTap="tap"
+            onClick={() => setShowRaiseSlider(false)}
+            className="px-3 py-1.5 bg-gradient-to-r from-gray-600 to-gray-700 rounded-md font-semibold text-xs shadow-md"
+          >
+            取消
+          </motion.button>
+          <motion.button
+            variants={buttonVariants}
+            whileHover="hover"
+            whileTap="tap"
+            onClick={handleRaise}
+            className="px-3 py-1.5 bg-gradient-to-r from-warning to-amber-600 rounded-md font-semibold text-xs shadow-md hover:shadow-warning/50"
+          >
+            确认 ${raiseAmount}
+          </motion.button>
+        </motion.div>
+      )}
     </motion.div>
   );
 }

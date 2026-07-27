@@ -222,15 +222,30 @@ export function GamePage({ onBack }: GamePageProps) {
         </div>
       </header>
 
-      {/* 主游戏区域 */}
-      <main className="pt-16 pb-32 px-4 flex items-center justify-center min-h-screen">
-        <div className="w-full max-w-7xl flex gap-6">
-          {/* 扑克桌 */}
-          <div className="flex-1">
+      {/* 主游戏区域 - 顶部对齐固定 padding，避免助手撑高容器导致牌桌相对下移 */}
+      <main className="pt-32 pb-9 px-4 flex justify-center">
+        <div className="w-full max-w-[1920px] flex gap-4 items-start justify-center">
+          {/* 左侧占位 - 与助手等宽，用于对称布局，保证牌桌视觉居中 */}
+          {showGTOAssistant && humanPlayer && (
+            <div className="w-72 flex-shrink-0" aria-hidden="true" />
+          )}
+
+          {/* 中间：牌桌 + 操作面板 - 固定基准宽度，两种模式下大小/位置一致 */}
+          <div className="flex-shrink-0 w-full max-w-[1360px] flex flex-col gap-3">
             <PokerTable gameState={gameState} />
+
+            {humanPlayer && isHumanTurn && humanPlayer.status === 'active' && (
+              <ActionPanel
+                player={humanPlayer}
+                availableActions={availableActions}
+                minRaise={gameState.minRaise}
+                maxBet={maxBet}
+                onAction={handleAction}
+              />
+            )}
           </div>
 
-          {/* GTO助手侧边栏 */}
+          {/* 右侧：GTO 助手 - 顶部对齐，独立滚动，不影响牌桌位置 */}
           <AnimatePresence>
             {showGTOAssistant && humanPlayer && (
               <motion.div
@@ -238,7 +253,7 @@ export function GamePage({ onBack }: GamePageProps) {
                 animate={{ x: 0, opacity: 1 }}
                 exit={{ x: 300, opacity: 0 }}
                 transition={{ duration: 0.3 }}
-                className="w-80"
+                className="w-72 flex-shrink-0 max-h-[calc(100vh-8rem)] overflow-y-auto pr-1"
               >
                 <GTOAssistant player={humanPlayer} gameState={gameState} />
               </motion.div>
@@ -246,17 +261,6 @@ export function GamePage({ onBack }: GamePageProps) {
           </AnimatePresence>
         </div>
       </main>
-
-      {/* 操作面板 */}
-      {humanPlayer && isHumanTurn && humanPlayer.status === 'active' && (
-        <ActionPanel
-          player={humanPlayer}
-          availableActions={availableActions}
-          minRaise={gameState.minRaise}
-          maxBet={maxBet}
-          onAction={handleAction}
-        />
-      )}
 
       {/* GTO助手切换按钮 */}
       <button

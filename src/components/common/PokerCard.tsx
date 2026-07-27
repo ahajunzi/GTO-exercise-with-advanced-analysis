@@ -18,9 +18,9 @@ export function PokerCard({ card, faceDown = false, size = 'medium', className =
 
   // 各尺寸下的角标数字与中央花色字号（精确控制，避免溢出）
   const rankTextClass = {
-    small: 'text-[10px]',
-    medium: 'text-sm',
-    large: 'text-base',
+    small: 'text-base',
+    medium: 'text-xl',
+    large: 'text-2xl',
   }[size];
 
   const suitTextClass = {
@@ -29,7 +29,7 @@ export function PokerCard({ card, faceDown = false, size = 'medium', className =
     large: 'text-3xl',
   }[size];
 
-  const paddingClass = size === 'small' ? 'p-1' : 'p-1.5';
+  const paddingClass = size === 'small' ? 'p-0.5' : 'p-1';
 
   if (!card || faceDown) {
     return (
