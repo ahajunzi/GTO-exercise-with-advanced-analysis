@@ -5,7 +5,8 @@ import { PokerTable } from './PokerTable';
 import { ActionPanel } from './ActionPanel';
 import { GTOAssistant } from './GTOAssistant';
 import { HandReviewModal } from './HandReviewModal';
-import { WinnerAnnouncement } from './WinnerAnnouncement';
+
+
 import { AIEngine } from '../../engine/ai/AIEngine';
 import { PlayerAction } from '../../types';
 import { DEFAULT_AI_SPEED } from '../../constants';
@@ -279,19 +280,7 @@ export function GamePage({ onBack }: GamePageProps) {
         </motion.button>
       )}
 
-      {/* 胜利公告 */}
-      {isShowdown && gameState.showdownResults && (
-        <WinnerAnnouncement
-          key={
-            // 用胜者id+winAmount组合作为key，确保每一手结算都重新播放动画
-            gameState.showdownResults
-              .filter(r => r.isWinner)
-              .map(r => `${r.player.id}:${r.winAmount}`)
-              .join('|') || 'w'
-          }
-          results={gameState.showdownResults}
-        />
-      )}
+
 
       {/* 决策复盘弹窗 */}
       {showHandReview && lastHandDecisions.length > 0 && (

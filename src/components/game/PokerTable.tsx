@@ -153,13 +153,22 @@ export function PokerTable({ gameState }: PokerTableProps) {
             const isCurrentPlayer = index === gameState.currentPlayerIndex;
             const isHuman = player.type === 'human';
 
+            // 摊牌阶段：查找该玩家的结算结果
+            const result =
+              phase === 'showdown' && gameState.showdownResults
+                ? gameState.showdownResults.find(r => r.player.id === player.id)
+                : undefined;
+
             return (
               <PlayerSeat
                 key={player.id}
                 player={player}
-                isCurrentPlayer={isCurrentPlayer}
+                isCurrentPlayer={isCurrentPlayer && phase !== 'showdown'}
                 showCards={isHuman || phase === 'showdown'}
                 position={position}
+                isWinner={!!result?.isWinner}
+                winAmount={result?.winAmount ?? 0}
+                handName={result?.hand?.name}
               />
             );
           })}
