@@ -24,29 +24,46 @@
 
 ## 📸 应用截图
 
-| 首页 | 游戏对局 |
-| :---: | :---: |
-| ![Home](public/screenshots/home.png) | ![Game](public/screenshots/game.png) |
+<table>
+  <tr>
+    <td align="center">
+      <b>🏠 首页 · Home</b><br/>
+      <img src="https://placehold.co/600x360/1e293b/ffffff/png?text=%F0%9F%8F%A0+Home+Page%0A%0AGTO+Trainer+Landing" alt="Home Page" width="100%"/>
+      <sub>项目介绍、快速开始与最近对局入口</sub>
+    </td>
+    <td align="center">
+      <b>🎮 游戏对局 · Game Table</b><br/>
+      <img src="https://placehold.co/600x360/065f46/ffffff/png?text=%F0%9F%83%8F+Poker+Table%0A%0A9-Max+%7C+AI+Opponents" alt="Game Table" width="100%"/>
+      <sub>9-max 牌桌、玩家席位、公共牌与下注面板</sub>
+    </td>
+  </tr>
+  <tr>
+    <td align="center">
+      <b>📐 GTO 助手 · GTO Assistant</b><br/>
+      <img src="https://placehold.co/600x360/7c2d12/ffffff/png?text=%F0%9F%93%90+GTO+Assistant%0A%0AEV+%7C+Pot+Odds+%7C+Range" alt="GTO Assistant" width="100%"/>
+      <sub>实时策略建议、EV 计算与底池赔率分析</sub>
+    </td>
+    <td align="center">
+      <b>📊 复盘分析 · Analysis</b><br/>
+      <img src="https://placehold.co/600x360/1e3a8a/ffffff/png?text=%F0%9F%93%8A+Analysis%0A%0AVPIP+%7C+PFR+%7C+AF" alt="Analysis" width="100%"/>
+      <sub>VPIP / PFR / AF 等核心指标与手牌回放</sub>
+    </td>
+  </tr>
+  <tr>
+    <td align="center">
+      <b>⚙️ 游戏设置 · Settings</b><br/>
+      <img src="https://placehold.co/600x360/581c87/ffffff/png?text=%E2%9A%99%EF%B8%8F+Settings%0A%0APlayers+%7C+Blinds+%7C+AI" alt="Settings" width="100%"/>
+      <sub>玩家人数、盲注、初始筹码与 AI 难度配置</sub>
+    </td>
+    <td align="center">
+      <b>🃏 手牌评估 · Hand Evaluator</b><br/>
+      <img src="https://placehold.co/600x360/9f1239/ffffff/png?text=%F0%9F%83%8F+Hand+Evaluator%0A%0AFlush+%7C+Straight+%7C+Draws" alt="Hand Evaluator" width="100%"/>
+      <sub>牌型识别与听牌（Flush / Straight / Gutshot）检测</sub>
+    </td>
+  </tr>
+</table>
 
-| 复盘分析 | 游戏设置 |
-| :---: | :---: |
-| ![Analysis](public/screenshots/analysis.png) | ![Settings](public/screenshots/settings.png) |
-
----
-
-## 🛠️ 技术栈
-
-| 分类 | 技术 |
-| --- | --- |
-| **前端框架** | React 18 + TypeScript |
-| **构建工具** | Vite 5 |
-| **状态管理** | Zustand |
-| **样式方案** | Tailwind CSS + tailwind-merge + clsx |
-| **动画库** | Framer Motion |
-| **数据可视化** | Recharts |
-| **本地存储** | Dexie.js (IndexedDB) |
-| **图标** | Lucide React + React Icons |
-| **代码规范** | ESLint + typescript-eslint |
+> 💡 上图为界面示意占位图；正式截图可在运行 `npm start` 后自行截取替换。
 
 ---
 
@@ -63,33 +80,13 @@
 npm install
 ```
 
-### 启动开发服务器
+### 启动项目
 
 ```bash
-npm run dev
+npm start
 ```
 
 浏览器访问 [http://localhost:5173](http://localhost:5173) 即可开始体验。
-
-### 构建生产版本
-
-```bash
-npm run build
-```
-
-构建产物输出到 `dist/` 目录。
-
-### 预览生产构建
-
-```bash
-npm run preview
-```
-
-### 代码检查
-
-```bash
-npm run lint
-```
 
 ---
 
@@ -97,8 +94,6 @@ npm run lint
 
 ```
 GTO-exercise-with-advanced-analysis/
-├── public/                     # 静态资源
-│   └── screenshots/            # 应用截图
 ├── src/
 │   ├── App.tsx                 # 应用主入口 & 路由
 │   ├── main.tsx                # React 挂载入口
@@ -124,17 +119,6 @@ GTO-exercise-with-advanced-analysis/
 ├── postcss.config.js
 └── eslint.config.js
 ```
-
----
-
-## 📜 可用脚本
-
-| 命令 | 说明 |
-| --- | --- |
-| `npm run dev` | 启动开发服务器（HMR） |
-| `npm run build` | 类型检查 + 生产构建 |
-| `npm run preview` | 本地预览生产构建 |
-| `npm run lint` | 运行 ESLint 检查 |
 
 ---
 
