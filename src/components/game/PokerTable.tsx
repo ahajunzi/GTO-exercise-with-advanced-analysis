@@ -133,19 +133,6 @@ export function PokerTable({ gameState }: PokerTableProps) {
                 border: '1px dashed rgba(34,211,238,0.45)',
               }}
             />
-            {/* 四方位刻度标签（复古仪表） */}
-            <span className="absolute -top-3 left-1/2 -translate-x-1/2 px-2 text-sm font-mono font-bold tracking-widest text-amber-400/80 bg-[#0f1e35]">
-              ▲ N
-            </span>
-            <span className="absolute -bottom-3 left-1/2 -translate-x-1/2 px-2 text-sm font-mono font-bold tracking-widest text-amber-400/80 bg-[#0f1e35]">
-              ▼ S
-            </span>
-            <span className="absolute top-1/2 -left-3 -translate-y-1/2 px-2 text-sm font-mono font-bold tracking-widest text-cyan-400/80 bg-[#0f1e35]">
-              ◀ W
-            </span>
-            <span className="absolute top-1/2 -right-3 -translate-y-1/2 px-2 text-sm font-mono font-bold tracking-widest text-cyan-400/80 bg-[#0f1e35]">
-              E ▶
-            </span>
           </div>
 
           {/* 桌角复古螺丝钉装饰 */}
@@ -328,6 +315,10 @@ export function PokerTable({ gameState }: PokerTableProps) {
               ? gameState.showdownResults.find((r) => r.player.id === player.id)
               : undefined;
 
+          // 摊牌阶段：结算结果里没有该玩家 => 他本手牌曾经弃牌
+          const hasFolded =
+            phase === 'showdown' && !!gameState.showdownResults && !result;
+
           return (
             <PlayerSeat
               key={player.id}
@@ -338,6 +329,7 @@ export function PokerTable({ gameState }: PokerTableProps) {
               isWinner={!!result?.isWinner}
               winAmount={result?.winAmount ?? 0}
               handName={result?.hand?.name}
+              hasFolded={hasFolded}
             />
           );
         })}

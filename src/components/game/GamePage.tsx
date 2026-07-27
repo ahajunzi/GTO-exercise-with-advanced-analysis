@@ -11,6 +11,9 @@ import { AIEngine } from '../../engine/ai/AIEngine';
 import { PlayerAction } from '../../types';
 import { DEFAULT_AI_SPEED } from '../../constants';
 
+// AI 慢速模式的每步延迟（3 秒）
+const SLOW_AI_SPEED = 1500;
+
 interface GamePageProps {
   onBack?: () => void;
 }
@@ -21,6 +24,9 @@ export function GamePage({ onBack }: GamePageProps) {
   const showHandReview = useGameStore(s => s.showHandReview);
   const lastHandDecisions = useGameStore(s => s.lastHandDecisions);
   const closeHandReview = useGameStore(s => s.closeHandReview);
+  const aiSpeedMode = useGameStore(s => s.aiSpeedMode);
+  const setAiSpeedMode = useGameStore(s => s.setAiSpeedMode);
+  const aiSpeedModeRef = useRef(aiSpeedMode);
   const [showGTOAssistant, setShowGTOAssistant] = useState(true);
   const [localGameStarted, setLocalGameStarted] = useState(false);
   const processingRef = useRef(false);
@@ -35,6 +41,10 @@ export function GamePage({ onBack }: GamePageProps) {
     gameStateRef.current = gameState;
     executeActionRef.current = executePlayerAction;
   }, [gameState, executePlayerAction]);
+
+  useEffect(() => {
+    aiSpeedModeRef.current = aiSpeedMode;
+  }, [aiSpeedMode]);
 
   // 初始化游戏逻辑
   useEffect(() => {
@@ -135,7 +145,7 @@ export function GamePage({ onBack }: GamePageProps) {
           // 注意：如果失败，GameEngine 会保持状态不变，下次 Effect 会重新触发
           processingRef.current = false;
         });
-      }, DEFAULT_AI_SPEED);
+      }, aiSpeedModeRef.current === 'slow' ? SLOW_AI_SPEED : DEFAULT_AI_SPEED);
 
       return () => {
         clearTimeout(timer);
@@ -219,6 +229,33 @@ export function GamePage({ onBack }: GamePageProps) {
             <div className="text-sm text-text-muted">
               小盲/大盲: <span className="text-warning font-semibold">${gameState.smallBlind}/${gameState.bigBlind}</span>
             </div>
+
+            {/* AI 节奏切换 */}
+            <div className="flex items-center gap-1 bg-white/5 rounded-lg p-1 border border-white/10">
+              <button
+                onClick={() => setAiSpeedMode('fast')}
+                className={`px-3 py-1.5 rounded-md text-sm font-semibold transition-all ${
+                  aiSpeedMode === 'fast'
+                    ? 'bg-primary text-white shadow'
+                    : 'text-text-muted hover:text-white'
+                }`}
+                title="AI 快速决策（默认）"
+              >
+                ⚡ 快速
+              </button>
+              <button
+                onClick={() => setAiSpeedMode('slow')}
+                className={`px-3 py-1.5 rounded-md text-sm font-semibold transition-all ${
+                  aiSpeedMode === 'slow'
+                    ? 'bg-primary text-white shadow'
+                    : 'text-text-muted hover:text-white'
+                }`}
+                title="AI 每步等待 3 秒，便于观察"
+              >
+                🐢 慢速
+              </button>
+            </div>
+
             <button className="p-2 hover:bg-white/10 rounded-lg transition-colors text-xl">
               ⚙️
             </button>

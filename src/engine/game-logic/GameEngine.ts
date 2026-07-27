@@ -375,20 +375,31 @@ export class GameEngine {
     );
 
     if (activePlayers.length === 1) {
-      // 只剩一个玩家，直接获胜
+      // 只剩一个玩家，直接获胜（其他人都弃牌了）
       this.state.phase = 'showdown';
       const winner = activePlayers[0];
       const totalPot = this.state.pots.reduce((sum, pot) => sum + pot.amount, 0);
       winner.chips += totalPot;
       this.state.pots = [{ amount: 0, eligiblePlayers: [] }];
-      
-      // 重置所有玩家状态为 waiting
+
+      // 生成 showdownResults，只包含未弃牌的玩家（供 UI 结算面板 + 弃牌灰暗判断使用）
+      this.state.showdownResults = [
+        {
+          player: winner,
+          hand: evaluateHand([...winner.cards, ...this.state.board]),
+          winAmount: totalPot,
+          isWinner: true,
+        },
+      ];
+
+      // 重置玩家状态为 waiting（但保留 'folded'，让 UI 结算面板能识别弃牌玩家用于灰暗展示）
+      // 真正的 status 重置会在下一手 startNewHand() 里发生
       this.state.players.forEach(player => {
-        if (player.status !== 'out') {
+        if (player.status !== 'out' && player.status !== 'folded') {
           player.status = 'waiting';
         }
       });
-      
+
       return;
     }
 
@@ -538,9 +549,10 @@ export class GameEngine {
     // 清空底池
     this.state.pots = [{ amount: 0, eligiblePlayers: [] }];
     
-    // 重置所有玩家状态为 waiting（准备下一局）
+    // 重置玩家状态为 waiting（但保留 'folded'，让 UI 结算面板能识别弃牌玩家用于灰暗展示）
+    // 真正的 status 重置会在下一手 startNewHand() 里发生
     this.state.players.forEach(player => {
-      if (player.status !== 'out') {
+      if (player.status !== 'out' && player.status !== 'folded') {
         player.status = 'waiting';
       }
     });

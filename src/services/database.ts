@@ -1,5 +1,21 @@
 import Dexie, { Table } from 'dexie';
-import { HandHistory, PlayerStats, GameConfig } from '../types';
+import { HandHistory, PlayerStats, GameConfig, GamePhase, ActionType } from '../types';
+
+// 与 stores/gameStore.ts 中的 DecisionRecord 保持结构一致
+// 这里独立声明是为了避免 database <-> gameStore 的循环依赖
+export interface StoredDecisionRecord {
+  handId: string;
+  timestamp: number;
+  phase: GamePhase;
+  action: ActionType;
+  amount: number;
+  bestAction: ActionType;
+  quality: number;
+  evLoss: number;
+  feedback: string;
+  suggestion?: string;
+  handSnapshot?: { pot: number; toCall: number; equity: number };
+}
 
 export interface StoredGame {
   id?: number;
@@ -7,6 +23,8 @@ export interface StoredGame {
   timestamp: number;
   config: GameConfig;
   history: HandHistory[];
+  // 决策复盘数据：按 handId 存储该手所有决策记录（新增，兼容旧数据可为空）
+  decisions?: Record<string, StoredDecisionRecord[]>;
 }
 
 export interface StoredStats {
@@ -30,12 +48,18 @@ export class GameDatabase extends Dexie {
   }
 
   // 保存游戏历史
-  async saveGame(gameId: string, config: GameConfig, history: HandHistory[]): Promise<number> {
+  async saveGame(
+    gameId: string,
+    config: GameConfig,
+    history: HandHistory[],
+    decisions?: Record<string, StoredDecisionRecord[]>
+  ): Promise<number> {
     return await this.games.add({
       gameId,
       timestamp: Date.now(),
       config,
-      history
+      history,
+      decisions,
     });
   }
 

@@ -34,6 +34,9 @@ interface GameStore {
   lastHandDecisions: DecisionRecord[];    // 上一手结算后固化的记录（供 Review 面板使用）
   showHandReview: boolean;                 // 是否显示结算复盘弹窗
 
+  // AI 决策节奏：fast=沿用默认速度，slow=每步等 3 秒（便于观察）
+  aiSpeedMode: 'fast' | 'slow';
+
   // Actions
   initializeGame: (config?: Partial<GameConfig>) => void;
   startNewHand: () => void;
@@ -41,6 +44,7 @@ interface GameStore {
   updateGameState: () => void;
   saveHandHistory: () => Promise<void>;
   setAssistantMode: (mode: SolverMode) => void;
+  setAiSpeedMode: (mode: 'fast' | 'slow') => void;
   closeHandReview: () => void;
 }
 
@@ -53,6 +57,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
   currentHandDecisions: [],
   lastHandDecisions: [],
   showHandReview: false,
+  aiSpeedMode: 'fast',
 
   initializeGame: (config = {}) => {
     const fullConfig: GameConfig = { ...DEFAULT_CONFIG, ...config };
@@ -165,7 +170,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
   },
 
   saveHandHistory: async () => {
-    const { engine, gameState } = get();
+    const { engine, gameState, currentHandDecisions } = get();
     if (!engine || !gameState) return;
 
     try {
@@ -191,7 +196,12 @@ export const useGameStore = create<GameStore>((set, get) => ({
         aiDifficulty: DEFAULT_CONFIG.aiDifficulty
       };
 
-      await db.saveGame(gameState.id, config, [handHistory]);
+      // 把本手的决策评分记录一并存入（按 handId 归档，供"查看详情"复盘使用）
+      const decisionsMap = currentHandDecisions.length > 0
+        ? { [handHistory.id]: currentHandDecisions }
+        : undefined;
+
+      await db.saveGame(gameState.id, config, [handHistory], decisionsMap);
       await StatsService.updateStatsFromHand(handHistory);
     } catch (error) {
       console.error('[GameStore] Error saving hand history:', error);
@@ -199,5 +209,6 @@ export const useGameStore = create<GameStore>((set, get) => ({
   },
 
   setAssistantMode: (mode) => set({ assistantMode: mode }),
+  setAiSpeedMode: (mode) => set({ aiSpeedMode: mode }),
   closeHandReview: () => set({ showHandReview: false }),
 }));

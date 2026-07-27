@@ -93,8 +93,16 @@ export class PreflopRanges {
     
     // **盲注位特殊处理：已投入筹码，底池赔率好**
     if (isInBlind && callAmount > 0) {
+      // ⚠️ 关键：STRONG+ 的牌永远不 limp call —— 该 raise 就 raise
+      if (tier >= HandTier.STRONG) {
+        return { action: 'raise', raiseSize: 3 * bigBlind, confidence: 0.90 };
+      }
       // 如果底池赔率很好（跟注金额小），放宽范围但不至于什么都玩
       if (callAmount <= bb * 2) {
+        // GOOD 牌在盲注位也倾向 raise（isolate limper）
+        if (tier === HandTier.GOOD) {
+          return { action: 'raise', raiseSize: 2.5 * bigBlind, confidence: 0.75 };
+        }
         // 面对 limp 或最小加注，边缘及以上可 call
         if (tier >= HandTier.MARGINAL) {
           return { action: 'call', confidence: 0.70 };

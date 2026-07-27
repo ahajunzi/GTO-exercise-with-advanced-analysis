@@ -11,6 +11,12 @@ interface PlayerSeatProps {
   isWinner?: boolean;
   winAmount?: number;
   handName?: string;
+  /**
+   * 由外部（摊牌阶段）显式告知：该玩家本手牌曾经弃牌。
+   * 因为引擎在摊牌结束时会把 status 重置为 'waiting'，
+   * 单看 player.status 无法在结算界面识别弃牌玩家。
+   */
+  hasFolded?: boolean;
 }
 
 export function PlayerSeat({
@@ -21,9 +27,10 @@ export function PlayerSeat({
   isWinner = false,
   winAmount = 0,
   handName,
+  hasFolded = false,
 }: PlayerSeatProps) {
   const isActive = player.status === 'active' || player.status === 'waiting';
-  const isFolded = player.status === 'folded';
+  const isFolded = player.status === 'folded' || hasFolded;
   const isAllIn = player.status === 'all-in';
 
   // 卡片主色调 - 科技复古双色系（琥珀 / 青 / 蓝灰）
@@ -336,7 +343,11 @@ export function PlayerSeat({
 
         {/* 玩家手牌 */}
         {player.cards.length > 0 && (
-          <div className="absolute -top-14 left-1/2 -translate-x-1/2 flex gap-1">
+          <div
+            className={`absolute -top-14 left-1/2 -translate-x-1/2 flex gap-1 ${
+              isFolded ? 'opacity-40 grayscale brightness-75' : ''
+            }`}
+          >
             {player.cards.map((card, index) => (
               <PokerCard
                 key={index}

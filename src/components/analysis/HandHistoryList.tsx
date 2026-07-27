@@ -1,5 +1,7 @@
+import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { StoredGame } from '../../services/database';
+import { GameDetailModal } from './GameDetailModal';
 
 interface HandHistoryListProps {
   games: StoredGame[];
@@ -7,6 +9,8 @@ interface HandHistoryListProps {
 }
 
 export function HandHistoryList({ games, onRefresh }: HandHistoryListProps) {
+  const [selectedGame, setSelectedGame] = useState<StoredGame | null>(null);
+
   const formatDate = (timestamp: number) => {
     const date = new Date(timestamp);
     return date.toLocaleString('zh-CN', {
@@ -47,6 +51,7 @@ export function HandHistoryList({ games, onRefresh }: HandHistoryListProps) {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: index * 0.05 }}
+            onClick={() => setSelectedGame(game)}
             className="bg-gradient-to-br from-background-dark to-background rounded-xl border border-white/10 p-6 hover:border-primary/50 transition-colors cursor-pointer"
           >
             <div className="flex items-start justify-between">
@@ -81,13 +86,27 @@ export function HandHistoryList({ games, onRefresh }: HandHistoryListProps) {
                 </div>
               </div>
 
-              <button className="px-4 py-2 bg-background hover:bg-background-dark rounded-lg text-sm transition-colors">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setSelectedGame(game);
+                }}
+                className="px-4 py-2 bg-background hover:bg-background-dark rounded-lg text-sm transition-colors"
+              >
                 查看详情
               </button>
             </div>
           </motion.div>
         ))}
       </div>
+
+      {/* 对局详情弹窗 */}
+      {selectedGame && (
+        <GameDetailModal
+          game={selectedGame}
+          onClose={() => setSelectedGame(null)}
+        />
+      )}
     </div>
   );
 }

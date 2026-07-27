@@ -235,24 +235,53 @@ export class GTOSolver {
           reasoning: `EV=${callEV.toFixed(0)}，权益${(equity*100).toFixed(0)}% 不足以支撑跟注` });
       }
     } else if (action === 'call') {
+      const callFreq = confidence;
       strategies.push({
         action: ctx.toCall > 0 ? 'call' : 'check',
-        frequency: confidence,
+        frequency: callFreq,
         expectedValue: callEV,
         reasoning: this.preflopReason(ctx.toCall > 0 ? 'call' : 'check', tier, ctx.position, raiseTier)
       });
+
       // 少量 raise 混合（仅当加注 EV 也为正 且不在盲注防守大 3-bet 场景）
-      if (raiseEV > 0 && raiseTier !== '3bet' && raiseTier !== '4bet+') {
+      const canBluffRaise = raiseEV > 0 && raiseTier !== '3bet' && raiseTier !== '4bet+';
+      const raiseMixFreq = canBluffRaise ? 0.15 : 0;
+      if (canBluffRaise) {
         strategies.push({
-          action: 'raise', frequency: 0.15, expectedValue: raiseEV,
+          action: 'raise', frequency: raiseMixFreq, expectedValue: raiseEV,
           reasoning: '也可以少量偷袭加注，混淆范围'
         });
       }
-      strategies.push({
-        action: 'fold', frequency: 1 - confidence - (raiseEV > 0 ? 0.15 : 0),
-        expectedValue: 0,
-        reasoning: '也可以弃牌规避风险'
-      });
+
+      // ⚠️ 关键修复：只有在【面对加注 + 牌力真的边缘】时才允许 fold 混合。
+      // - toCall === 0：无需付钱看牌，绝对不能塞 fold（免费入池）
+      // - 盲注补差 <= 1BB：本质上也是免费看牌，不弃
+      // - 牌力 GOOD 及以上（KQs/AJs/AQo/77+）：无论如何都不应弃
+      // 之前这里无条件 push 1-confidence 的 fold，会让 KQs 也有 15-30% 概率 fold，属于严重 bug。
+      const isFreeOrTiny = ctx.toCall <= gameState.bigBlind;
+      const isStrongEnough = tier >= HandTier.GOOD;
+      if (!isFreeOrTiny && !isStrongEnough) {
+        const foldFreq = Math.max(0, 1 - callFreq - raiseMixFreq);
+        if (foldFreq > 0) {
+          strategies.push({
+            action: 'fold', frequency: foldFreq,
+            expectedValue: 0,
+            reasoning: '也可以弃牌规避风险'
+          });
+        }
+      }
+      // 免费/微跟场景：把剩余频率补到 call（不加 fold）
+      // 强牌场景：把剩余频率补到 raise（不加 fold）
+      else if (!isFreeOrTiny && isStrongEnough) {
+        // 强牌但不塞 fold：剩余频率转成 raise
+        const rest = Math.max(0, 1 - callFreq - raiseMixFreq);
+        if (rest > 0) {
+          strategies.push({
+            action: 'raise', frequency: rest, expectedValue: raiseEV,
+            reasoning: '强牌，也可以直接加注施压'
+          });
+        }
+      }
     } else if (action === 'raise') {
       strategies.push({
         action: 'raise',
