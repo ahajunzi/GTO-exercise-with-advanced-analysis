@@ -307,18 +307,18 @@ export function PlayerSeat({
             </motion.div>
           )}
 
-          {/* All-in 标记 */}
+          {/* All-in 标记 - 放在卡片内部右上角，避免被手牌/下注框遮挡 */}
           {isAllIn && !isWinner && (
             <motion.div
-              className="absolute -top-9 left-1/2 -translate-x-1/2 whitespace-nowrap px-3 py-1.5 rounded-sm text-sm font-black font-mono tracking-widest"
+              className="absolute top-1 right-1 md:top-1.5 md:right-1.5 z-20 whitespace-nowrap px-1.5 py-0.5 md:px-2 md:py-1 rounded-sm text-[9px] md:text-[11px] font-black font-mono tracking-widest pointer-events-none"
               style={{
                 background: 'linear-gradient(180deg, #ef4444, #7f1d1d)',
                 color: '#fef2f2',
-                border: '2px solid #dc2626',
-                boxShadow: '0 0 12px rgba(239,68,68,0.7), inset 0 1px 0 rgba(255,255,255,0.3)',
+                border: '1.5px solid #dc2626',
+                boxShadow: '0 0 10px rgba(239,68,68,0.7), inset 0 1px 0 rgba(255,255,255,0.3)',
               }}
               initial={{ scale: 0 }}
-              animate={{ scale: [1, 1.08, 1] }}
+              animate={{ scale: [1, 1.1, 1] }}
               transition={{ duration: 0.8, repeat: Infinity }}
             >
               ▲ ALL IN
