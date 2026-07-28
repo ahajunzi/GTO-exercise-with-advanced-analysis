@@ -132,9 +132,41 @@ export class GameEngine {
     this.state.phase = 'preflop';
     this.state.pots = [{ amount: 0, eligiblePlayers: this.state.players.filter(p => p.status !== 'out').map(p => p.id) }];
     this.state.showdownResults = undefined; // 清除上一局的结算结果
-    
+
+    // 关键兜底：如果起始 currentPlayer 因盲注 all-in 或其他原因不可行动，
+    // 需要跳到下一个可行动玩家；若全无可行动玩家，直接快进摊牌
+    this.skipToNextActionablePlayer();
+
     console.log('[GameEngine] Hand started, current player index:', this.state.currentPlayerIndex);
     console.log('[GameEngine] Current player:', this.state.players[this.state.currentPlayerIndex]?.name);
+  }
+
+  // 从当前 currentPlayerIndex 起，跳到下一个可行动玩家；若无人可行动则快进摊牌
+  private skipToNextActionablePlayer(): void {
+    const playerCount = this.state.players.length;
+    let idx = this.state.currentPlayerIndex;
+    let attempts = 0;
+    while (attempts < playerCount) {
+      const p = this.state.players[idx];
+      if (p && (p.status === 'active' || p.status === 'waiting')) {
+        this.state.currentPlayerIndex = idx;
+        return;
+      }
+      idx = (idx + 1) % playerCount;
+      attempts++;
+    }
+    // 遍历一圈也没找到可行动玩家（例如所有非弃牌者都 all-in）
+    console.warn('[GameEngine] No actionable player at start, fast-forwarding');
+    // 检查手牌中还剩几人
+    const playersInHand = this.state.players.filter(p =>
+      p.status !== 'folded' && p.status !== 'out'
+    );
+    if (playersInHand.length >= 2) {
+      this.fastForwardToShowdown();
+    } else if (playersInHand.length === 1) {
+      // 只剩一人（其他都 fold/out），直接结算
+      this.fastForwardToShowdown();
+    }
   }
 
   // 收取盲注
