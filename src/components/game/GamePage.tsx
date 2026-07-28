@@ -10,6 +10,7 @@ import { HandReviewModal } from './HandReviewModal';
 import { AIEngine } from '../../engine/ai/AIEngine';
 import { PlayerAction } from '../../types';
 import { DEFAULT_AI_SPEED } from '../../constants';
+import { AISettingsModal } from './AISettingsModal';
 
 // AI 慢速模式的每步延迟（3 秒）
 const SLOW_AI_SPEED = 1500;
@@ -28,6 +29,7 @@ export function GamePage({ onBack }: GamePageProps) {
   const setAiSpeedMode = useGameStore(s => s.setAiSpeedMode);
   const aiSpeedModeRef = useRef(aiSpeedMode);
   const [showGTOAssistant, setShowGTOAssistant] = useState(true);
+  const [showAISettings, setShowAISettings] = useState(false);
   const [localGameStarted, setLocalGameStarted] = useState(false);
   const processingRef = useRef(false);
   const gameStateRef = useRef(gameState);
@@ -331,7 +333,11 @@ export function GamePage({ onBack }: GamePageProps) {
               </button>
             </div>
 
-            <button className="p-1.5 md:p-2 hover:bg-white/10 rounded-lg transition-colors text-lg md:text-xl hidden sm:block">
+            <button
+              onClick={() => setShowAISettings(true)}
+              className="p-1.5 md:p-2 hover:bg-white/10 rounded-lg transition-colors text-lg md:text-xl"
+              title="AI 风格设置"
+            >
               ⚙️
             </button>
           </div>
@@ -439,6 +445,9 @@ export function GamePage({ onBack }: GamePageProps) {
       {showHandReview && lastHandDecisions.length > 0 && (
         <HandReviewModal decisions={lastHandDecisions} onClose={closeHandReview} />
       )}
+
+      {/* AI 风格设置弹窗 */}
+      <AISettingsModal open={showAISettings} onClose={() => setShowAISettings(false)} />
     </div>
   );
 }

@@ -148,3 +148,91 @@ export function getStyleDisplayName(style: AIStyle): string {
   
   return `${emoji} ${config.name}`;
 }
+
+// ============================================================
+// 以下为「AI 风格设置」相关的扩展 API（用户可在 UI 中控制）
+// ============================================================
+
+/** 风格权重（0-100 的整数），值越大越易被抽到；全 0 时回退到默认分布 */
+export type AIStyleWeights = Record<AIStyle, number>;
+
+/** 座位级别的覆盖：'random' 表示按权重随机；否则锁定为具体风格 */
+export type AIStyleOverride = AIStyle | 'random';
+
+/** 默认权重（等同旧 assignRandomStyle 的分布） */
+export const DEFAULT_STYLE_WEIGHTS: AIStyleWeights = {
+  TAG: 4,
+  LAG: 5,
+  TAP: 1,
+  LAP: 0,
+};
+
+/**
+ * 预设方案（整桌一键切换）
+ * key -> 权重分布 + 中文说明，便于 UI 展示
+ */
+export const STYLE_PRESETS: Record<
+  string,
+  { name: string; description: string; weights: AIStyleWeights }
+> = {
+  default: {
+    name: '默认',
+    description: '以松凶/紧凶为主，偶尔紧弱',
+    weights: { TAG: 4, LAG: 5, TAP: 1, LAP: 0 },
+  },
+  balanced: {
+    name: '均匀分布',
+    description: '四种风格等概率出现',
+    weights: { TAG: 1, LAG: 1, TAP: 1, LAP: 1 },
+  },
+  all_lag: {
+    name: '全松凶（施压训练）',
+    description: '训练面对激进多路进攻',
+    weights: { TAG: 0, LAG: 1, TAP: 0, LAP: 0 },
+  },
+  all_tag: {
+    name: '全紧凶（价值训练）',
+    description: '训练面对稳健对手的价值榨取',
+    weights: { TAG: 1, LAG: 0, TAP: 0, LAP: 0 },
+  },
+  all_fish: {
+    name: '全鱼（新手陪练）',
+    description: '对手大量跟注、被动打法',
+    weights: { TAG: 0, LAG: 0, TAP: 0, LAP: 1 },
+  },
+  aggressive_table: {
+    name: '激进桌',
+    description: '松凶+紧凶各半，几乎没有被动玩家',
+    weights: { TAG: 1, LAG: 1, TAP: 0, LAP: 0 },
+  },
+  passive_table: {
+    name: '被动桌',
+    description: '紧弱+松弱为主，训练价值下注',
+    weights: { TAG: 0, LAG: 0, TAP: 1, LAP: 1 },
+  },
+};
+
+/**
+ * 按自定义权重分配一个风格；若权重全为 0 则回退到默认权重
+ */
+export function pickStyleByWeights(weights: AIStyleWeights): AIStyle {
+  const total = weights.TAG + weights.LAG + weights.TAP + weights.LAP;
+  const w = total > 0 ? weights : DEFAULT_STYLE_WEIGHTS;
+  return weightedRandom([
+    { style: 'TAG', weight: w.TAG },
+    { style: 'LAG', weight: w.LAG },
+    { style: 'TAP', weight: w.TAP },
+    { style: 'LAP', weight: w.LAP },
+  ]);
+}
+
+/**
+ * 组合决策：如果传入了明确风格则直接返回；否则按权重随机
+ */
+export function resolveStyle(
+  override: AIStyleOverride | undefined,
+  weights: AIStyleWeights
+): AIStyle {
+  if (override && override !== 'random') return override;
+  return pickStyleByWeights(weights);
+}

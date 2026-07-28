@@ -6,6 +6,11 @@ import { db } from '../services/database';
 import { StatsService } from '../services/statsService';
 import { GTOSolver, DecisionAnalysis, SolverMode } from '../engine/gto/GTOSolver';
 import { opponentModel } from '../engine/gto/OpponentModel';
+import {
+  AIStyleWeights,
+  AIStyleOverride,
+  DEFAULT_STYLE_WEIGHTS,
+} from '../types/aiStyle';
 
 // 单次决策记录（用于结算后展示评分曲线）
 export interface DecisionRecord {
@@ -37,6 +42,10 @@ interface GameStore {
   // AI 决策节奏：fast=沿用默认速度，slow=每步等 3 秒（便于观察）
   aiSpeedMode: 'fast' | 'slow';
 
+  // AI 风格设置
+  aiStyleWeights: AIStyleWeights;                    // 整桌风格权重（用于随机座位）
+  aiStyleOverrides: Record<number, AIStyleOverride>; // 每个座位的锁定风格（'random' 表示按权重随机）
+
   // Actions
   initializeGame: (config?: Partial<GameConfig>) => void;
   startNewHand: () => void;
@@ -46,6 +55,12 @@ interface GameStore {
   setAssistantMode: (mode: SolverMode) => void;
   setAiSpeedMode: (mode: 'fast' | 'slow') => void;
   closeHandReview: () => void;
+
+  // AI 风格设置 actions
+  setAiStyleWeights: (weights: AIStyleWeights) => void;
+  setAiStyleOverride: (playerIndex: number, override: AIStyleOverride) => void;
+  applyAiStyleConfig: (opts?: { immediate?: boolean }) => void;
+  resetAiStyleConfig: () => void;
 }
 
 export const useGameStore = create<GameStore>((set, get) => ({
@@ -58,6 +73,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
   lastHandDecisions: [],
   showHandReview: false,
   aiSpeedMode: 'fast',
+  aiStyleWeights: { ...DEFAULT_STYLE_WEIGHTS },
+  aiStyleOverrides: {},
 
   initializeGame: (config = {}) => {
     const fullConfig: GameConfig = { ...DEFAULT_CONFIG, ...config };
@@ -211,4 +228,40 @@ export const useGameStore = create<GameStore>((set, get) => ({
   setAssistantMode: (mode) => set({ assistantMode: mode }),
   setAiSpeedMode: (mode) => set({ aiSpeedMode: mode }),
   closeHandReview: () => set({ showHandReview: false }),
+
+  setAiStyleWeights: (weights) => set({ aiStyleWeights: { ...weights } }),
+
+  setAiStyleOverride: (playerIndex, override) => {
+    const next = { ...get().aiStyleOverrides };
+    if (override === 'random') {
+      delete next[playerIndex]; // 'random' 等价于无覆盖，走权重
+    } else {
+      next[playerIndex] = override;
+    }
+    set({ aiStyleOverrides: next });
+  },
+
+  /**
+   * 把当前的风格配置提交给引擎：
+   * - immediate=true 立即为当前所有 AI 重新分配（本手就变）
+   * - 否则只登记到 pending，等下一手 startNewHand 时生效
+   */
+  applyAiStyleConfig: ({ immediate = false } = {}) => {
+    const { engine, aiStyleOverrides, aiStyleWeights } = get();
+    if (!engine) return;
+    if (immediate) {
+      engine.applyAIStylesNow(aiStyleOverrides, aiStyleWeights);
+      // 立即刷新 gameState 让 UI 显示新的风格标签
+      set({ gameState: engine.getState() });
+    } else {
+      engine.requestAIStyleReassign(aiStyleOverrides, aiStyleWeights);
+    }
+  },
+
+  resetAiStyleConfig: () => {
+    set({
+      aiStyleWeights: { ...DEFAULT_STYLE_WEIGHTS },
+      aiStyleOverrides: {},
+    });
+  },
 }));

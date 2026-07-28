@@ -1,7 +1,14 @@
 import { GameState, Player, Card, GamePhase, PlayerAction, ActionType, Pot, GameConfig, HandHistory } from '../../types';
 import { createDeck, shuffleDeck, dealCards } from '../../utils/deck';
 import { evaluateHand, compareHands } from '../../utils/handEvaluator';
-import { assignRandomStyle } from '../../types/aiStyle';
+import {
+  assignRandomStyle,
+  resolveStyle,
+  AIStyle,
+  AIStyleOverride,
+  AIStyleWeights,
+  DEFAULT_STYLE_WEIGHTS,
+} from '../../types/aiStyle';
 
 export class GameEngine {
   private state: GameState;
@@ -13,8 +20,49 @@ export class GameEngine {
   private raiseCountThisRound: number = 0; // 当前回合的加注次数
   private readonly MAX_RAISES_PER_ROUND = 4; // 每轮最多允许4次加注
 
+  // 「AI 风格设置」相关：
+  // - overrides[playerIndex] = 'random' | 具体风格；未设置的座位按 weights 抽取
+  // - pendingStyleConfig 若非 null，则在下一次 startNewHand 开始时应用
+  private pendingStyleConfig: {
+    overrides: Record<number, AIStyleOverride>;
+    weights: AIStyleWeights;
+  } | null = null;
+
   constructor(config: GameConfig) {
     this.state = this.initializeGame(config);
+  }
+
+  /**
+   * 提交一份 AI 风格配置，将在下一手开始时生效。
+   * 传入的 overrides 以座位下标为 key（0 是人类通常忽略），values 为 'random' 或具体风格。
+   */
+  requestAIStyleReassign(
+    overrides: Record<number, AIStyleOverride>,
+    weights: AIStyleWeights
+  ): void {
+    this.pendingStyleConfig = { overrides, weights };
+  }
+
+  /** 立即对当前所有 AI 玩家重新分配风格（用于设置弹窗中的"立即应用"） */
+  applyAIStylesNow(
+    overrides: Record<number, AIStyleOverride>,
+    weights: AIStyleWeights
+  ): void {
+    this.state.players.forEach((player, index) => {
+      if (player.type !== 'ai') return;
+      const style = resolveStyle(overrides[index], weights);
+      player.aiStyle = style;
+    });
+    // 立即应用后清除 pending，避免下手重复覆盖
+    this.pendingStyleConfig = null;
+  }
+
+  /** 读取当前所有 AI 玩家的风格快照（供 UI 显示） */
+  getAIStyleSnapshot(): Array<{ index: number; name: string; style?: AIStyle }> {
+    return this.state.players
+      .map((p, i) => ({ index: i, name: p.name, style: p.aiStyle, type: p.type }))
+      .filter(p => p.type === 'ai')
+      .map(({ index, name, style }) => ({ index, name, style }));
   }
 
   // 初始化游戏
@@ -71,6 +119,22 @@ export class GameEngine {
   startNewHand(): void {
     console.log('[GameEngine] ===== Starting new hand =====');
     
+    // 如果有 pending 的风格重分配请求，在本手开始前应用
+    if (this.pendingStyleConfig) {
+      const { overrides, weights } = this.pendingStyleConfig;
+      this.state.players.forEach((player, index) => {
+        if (player.type !== 'ai') return;
+        player.aiStyle = resolveStyle(overrides[index], weights);
+      });
+      console.log(
+        '[GameEngine] AI styles reassigned:',
+        this.state.players
+          .filter(p => p.type === 'ai')
+          .map(p => ({ name: p.name, style: p.aiStyle }))
+      );
+      this.pendingStyleConfig = null;
+    }
+
     // 重置当前手牌的行动记录和加注计数
     this.currentHandActions = [];
     this.raiseCountThisRound = 0;
