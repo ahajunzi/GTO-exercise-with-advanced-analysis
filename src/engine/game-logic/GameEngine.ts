@@ -222,7 +222,8 @@ export class GameEngine {
           if (player.chips === 0) player.status = 'all-in';
           break;
         }
-        
+
+        const oldMaxBetForRaise = this.getMaxBet();
         const raiseAmount = Math.min(action.amount, player.chips);
         if (raiseAmount < this.state.minRaise && player.chips > this.state.minRaise) {
           console.error('[GameEngine] Raise amount too small');
@@ -230,13 +231,14 @@ export class GameEngine {
         }
         player.chips -= raiseAmount;
         player.bet += raiseAmount;
-        this.state.lastRaise = raiseAmount - (this.getMaxBet() - player.bet + raiseAmount);
-        this.state.minRaise = this.getMaxBet();
+        // 修复：lastRaise = 新最高注 - 旧最高注（即本次加注的净增量）
+        this.state.lastRaise = Math.max(this.state.bigBlind, player.bet - oldMaxBetForRaise);
+        this.state.minRaise = player.bet + this.state.lastRaise;
         if (player.chips === 0) player.status = 'all-in';
-        
+
         // 增加加注计数
         this.raiseCountThisRound++;
-        
+
         // 关键修复：重置其他活跃玩家的hasActed，因为有人加注了，他们需要重新决策
         this.state.players.forEach(p => {
           if (p.id !== player.id && (p.status === 'active' || p.status === 'waiting')) {
@@ -271,60 +273,61 @@ export class GameEngine {
   // 移动到下一个玩家
   private moveToNextPlayer(): void {
     console.log('[GameEngine] moveToNextPlayer called');
-    
-    // 能行动的玩家（不含 all-in）
-    const activePlayers = this.state.players.filter(p => 
+
+    // 能行动的玩家（不含 all-in、folded、out）
+    const activePlayers = this.state.players.filter(p =>
       p.status === 'active' || p.status === 'waiting'
     );
-    
-    // 还在手牌中的玩家（含 all-in）
+
+    // 还在手牌中的玩家（含 all-in，不含 folded/out）
     const playersInHand = this.state.players.filter(p =>
       p.status !== 'folded' && p.status !== 'out'
     );
 
     console.log('[GameEngine] Active players:', activePlayers.length, 'Players in hand:', playersInHand.length);
 
-    // 只剩一个人在手牌中（其他人都弃牌了），直接获胜
+    // 场景1：只剩 1 名或 0 名玩家还在手牌中（其他人都弃牌了）→ 直接结算
     if (playersInHand.length <= 1) {
       console.log('[GameEngine] Only 1 or less players in hand, going to showdown');
-      this.state.phase = 'showdown';
-      this.showdown();
+      this.fastForwardToShowdown();
       return;
     }
-    
-    // 没有能行动的玩家（都 all-in 了或只剩1个能行动），推进阶段
-    if (activePlayers.length <= 1) {
-      // 检查当前轮是否完成
-      if (activePlayers.length === 0 || this.isRoundComplete()) {
-        console.log('[GameEngine] No actionable players left, advancing phase');
-        this.advancePhase();
+
+    // 场景2：没有任何人还能行动（全部 all-in），直接快进到摊牌
+    if (activePlayers.length === 0) {
+      console.log('[GameEngine] No actionable players, fast-forwarding to showdown');
+      this.fastForwardToShowdown();
+      return;
+    }
+
+    // 场景3：只剩 1 人能行动，且此人已经无需再面对下注（等于最高注 或 其他人全 all-in）
+    //         → 无需再让他做决策，直接快进
+    if (activePlayers.length === 1) {
+      const lonePlayer = activePlayers[0];
+      const maxBet = this.getMaxBet();
+      // 独苗玩家的下注已达到最高注，或所有对手都 all-in 了：无法再有意义地行动
+      if (lonePlayer.bet >= maxBet || lonePlayer.hasActed) {
+        console.log('[GameEngine] Only 1 actionable player left, fast-forwarding to showdown');
+        this.fastForwardToShowdown();
         return;
       }
+      // 否则允许该玩家 call / fold 后续继续走正常流程
     }
 
-    // 特殊情况：如果所有留在手牌中的玩家都已经all-in，直接发完所有牌并摊牌
-    const allInOrFolded = playersInHand.every(p => p.status === 'all-in');
-    if (allInOrFolded && playersInHand.length > 1) {
-      console.log('[GameEngine] All remaining players are all-in, fast-forwarding to showdown');
-      // 快进发完所有公共牌
-      while (this.state.phase !== 'showdown') {
-        this.advancePhase();
-      }
-      return;
-    }
-
-    // 如果当前轮完成，推进到下一阶段
+    // 场景4：当前轮全部行动完毕 → 推进到下一阶段
     if (this.isRoundComplete()) {
       console.log('[GameEngine] Round complete, advancing phase');
       this.advancePhase();
+      // 推进后如果只剩单人或全 all-in，会在下面的兜底再兜一次
+      this.ensureNotStuck();
       return;
     }
 
-    // 找到下一个活跃玩家
+    // 场景5：普通推进到下一个可行动玩家
     let nextIndex = (this.state.currentPlayerIndex + 1) % this.state.players.length;
     let attempts = 0;
     while (
-      this.state.players[nextIndex].status !== 'active' && 
+      this.state.players[nextIndex].status !== 'active' &&
       this.state.players[nextIndex].status !== 'waiting' &&
       attempts < this.state.players.length
     ) {
@@ -332,15 +335,44 @@ export class GameEngine {
       attempts++;
     }
 
-    // 如果找不到活跃玩家，推进阶段
+    // 兜底：如果一圈都没找到可行动玩家，强制快进摊牌
     if (attempts >= this.state.players.length) {
-      console.warn('[GameEngine] No active player found, advancing phase');
-      this.advancePhase();
+      console.warn('[GameEngine] No active player found after full loop, fast-forwarding');
+      this.fastForwardToShowdown();
       return;
     }
 
     this.state.currentPlayerIndex = nextIndex;
     console.log('[GameEngine] Next player:', this.state.players[nextIndex].name, 'index:', nextIndex);
+  }
+
+  // 快进到摊牌：处理所有 all-in 或只剩单人的情形，保证一定能推进到 showdown
+  private fastForwardToShowdown(): void {
+    let safety = 10; // 最多推进 5 个阶段，10 次是绝对安全上限
+    while (this.state.phase !== 'showdown' && safety-- > 0) {
+      this.advancePhase();
+    }
+    if (this.state.phase !== 'showdown') {
+      // 兜底：无论如何都要走到 showdown
+      console.error('[GameEngine] fastForwardToShowdown could not reach showdown after 10 iterations, forcing showdown');
+      this.state.phase = 'showdown';
+      this.showdown();
+    }
+  }
+
+  // 兜底检查：advancePhase 后如果发现没人能行动了，继续快进
+  private ensureNotStuck(): void {
+    if (this.state.phase === 'showdown') return;
+    const activePlayers = this.state.players.filter(p =>
+      p.status === 'active' || p.status === 'waiting'
+    );
+    const playersInHand = this.state.players.filter(p =>
+      p.status !== 'folded' && p.status !== 'out'
+    );
+    // 没人能行动，或只剩一个人在手牌中 → 快进
+    if (activePlayers.length === 0 || playersInHand.length <= 1) {
+      this.fastForwardToShowdown();
+    }
   }
 
   // 检查当前轮是否完成
@@ -475,10 +507,13 @@ export class GameEngine {
     this.state.deck = remaining;
   }
 
-  // 收集底池
+  // 收集底池：把所有玩家的 bet 归集到底池，并清零 bet（避免同一笔筹码被重复收集）
   private collectPot(): void {
     const totalBet = this.state.players.reduce((sum, p) => sum + p.bet, 0);
+    if (totalBet <= 0) return;
     this.state.pots[0].amount += totalBet;
+    // 关键修复：collectPot 必须清零 bet，否则 river→showdown 时会重复收集
+    this.state.players.forEach(p => { p.bet = 0; });
   }
 
   // 摊牌

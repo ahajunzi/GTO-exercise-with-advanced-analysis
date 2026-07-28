@@ -14,6 +14,25 @@ export class AIEngine {
       return { action: 'fold', amount: 0, confidence: 0 };
     }
 
+    // 全局兜底：任何异常都返回安全动作，绝不能让 AI 卡死
+    try {
+      return this.getDecisionInternal(player, gameState);
+    } catch (err) {
+      console.error('[AIEngine] getDecision crashed, fallback to safe action:', err);
+      const maxBet = Math.max(...gameState.players.map(p => p.bet), 0);
+      const callAmount = Math.max(0, maxBet - player.bet);
+      if (callAmount === 0) {
+        return { action: 'check', amount: 0, confidence: 0.5, thinking: '异常兜底：过牌' };
+      }
+      // 面对下注时的安全兜底：小注 call，大注 fold
+      if (callAmount <= gameState.bigBlind * 2 && callAmount < player.chips) {
+        return { action: 'call', amount: callAmount, confidence: 0.5, thinking: '异常兜底：跟注' };
+      }
+      return { action: 'fold', amount: 0, confidence: 0.5, thinking: '异常兜底：弃牌' };
+    }
+  }
+
+  private static getDecisionInternal(player: Player, gameState: GameState): AIDecision {
     const styleConfig = player.aiStyle ? AI_STYLES[player.aiStyle] : AI_STYLES.TAG;
 
     // 1. 拿到 GTO 助理同款的策略分布 + 推荐加注量

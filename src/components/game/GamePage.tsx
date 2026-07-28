@@ -76,6 +76,42 @@ export function GamePage({ onBack }: GamePageProps) {
     }
   }, [gameState?.phase, gameState?.showdownResults]);
 
+  // 全局 watchdog：AI 应在合理时间内决策完成，否则强制解锁
+  // 场景：某个环节意外未推进 state（比如 rAF 死锁、setTimeout 被 tab 挂起后恢复）
+  useEffect(() => {
+    if (!gameState || gameState.phase === 'showdown') return;
+    const current = gameState.players[gameState.currentPlayerIndex];
+    if (!current || current.type !== 'ai') return;
+
+    const canAct = current.status === 'active' || current.status === 'waiting';
+    if (!canAct) return;
+
+    // 8秒还没推进说明卡了，强制解锁并重新触发
+    const timeoutMs = aiSpeedModeRef.current === 'slow' ? 12000 : 8000;
+    const watchdog = setTimeout(() => {
+      const latest = gameStateRef.current;
+      if (
+        latest &&
+        latest.currentPlayerIndex === gameState.currentPlayerIndex &&
+        latest.phase === gameState.phase &&
+        latest.phase !== 'showdown'
+      ) {
+        console.warn('[GamePage] Watchdog: AI stuck for', timeoutMs, 'ms, forcing fold');
+        processingRef.current = false;
+        try {
+          executeActionRef.current(current.id, {
+            type: 'fold',
+            amount: 0,
+            timestamp: Date.now()
+          });
+        } catch (err) {
+          console.error('[GamePage] Watchdog fold failed:', err);
+        }
+      }
+    }, timeoutMs);
+    return () => clearTimeout(watchdog);
+  }, [gameState?.currentPlayerIndex, gameState?.phase]);
+
   // 处理AI玩家的回合
   useEffect(() => {
     console.log('[GamePage] Effect triggered:', {
@@ -133,17 +169,56 @@ export function GamePage({ onBack }: GamePageProps) {
         
         AIEngine.processAITurns(latestGameState, (playerId, decision) => {
           console.log('[GamePage] AI decision received:', { playerId, decision });
-          
-          // 执行 AI 决策
-          latestExecuteAction(playerId, {
-            type: decision.action,
-            amount: decision.amount,
-            timestamp: Date.now()
-          });
-          
+
+          try {
+            // 执行 AI 决策
+            latestExecuteAction(playerId, {
+              type: decision.action,
+              amount: decision.amount,
+              timestamp: Date.now()
+            });
+          } catch (err) {
+            console.error('[GamePage] AI executeAction crashed:', err);
+            // 兜底：强制 AI 弃牌，避免卡死
+            try {
+              latestExecuteAction(playerId, {
+                type: 'fold',
+                amount: 0,
+                timestamp: Date.now()
+              });
+            } catch (err2) {
+              console.error('[GamePage] Fallback fold also failed:', err2);
+            }
+          }
+
           // 无论成功或失败，都重置处理标志，防止卡住
-          // 注意：如果失败，GameEngine 会保持状态不变，下次 Effect 会重新触发
           processingRef.current = false;
+
+          // 额外兜底：若 executeAction 没有推进 state（下标未变），
+          // 100ms 后强制让 AI 弃牌，避免死循环卡住
+          setTimeout(() => {
+            const afterState = gameStateRef.current;
+            if (
+              afterState &&
+              afterState.currentPlayerIndex === latestGameState.currentPlayerIndex &&
+              afterState.phase === latestGameState.phase &&
+              afterState.phase !== 'showdown'
+            ) {
+              const stillCurrent = afterState.players[afterState.currentPlayerIndex];
+              if (stillCurrent && stillCurrent.type === 'ai' && stillCurrent.id === playerId) {
+                console.warn('[GamePage] State did not advance after AI action, forcing fold as safety net');
+                try {
+                  executeActionRef.current(playerId, {
+                    type: 'fold',
+                    amount: 0,
+                    timestamp: Date.now()
+                  });
+                } catch (err) {
+                  console.error('[GamePage] Safety-net fold failed:', err);
+                }
+              }
+            }
+          }, 100);
         });
       }, aiSpeedModeRef.current === 'slow' ? SLOW_AI_SPEED : DEFAULT_AI_SPEED);
 
